@@ -49,11 +49,11 @@
     .btn-row { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
     button.btn-primary {
       padding: 13px 22px; font-size: 18px;
-      background: #5c3d2e; color: #f5f1ec;
+      background: #3d5c4a; color: #f0ede8;
       border: none; border-radius: 5px; cursor: pointer;
       min-height: 48px;
     }
-    button.btn-primary:hover { background: #3d2518; }
+    button.btn-primary:hover { background: #2a4234; }
     button.btn-secondary {
       padding: 13px 22px; font-size: 18px;
       background: #ddd5ca; color: #1e1612;
@@ -269,7 +269,7 @@
   <div id="app" class="hidden">
 
     <div class="nav">
-      <button class="btn-primary"   onclick="showPanel('assessment')">Bedömning</button>
+      <button class="btn-primary"   onclick="showPanel('assessment')">Registrera bedömning</button>
       <button class="btn-secondary" onclick="showPanel('my-assessments')">Mina bedömningar</button>
       <button class="btn-secondary" onclick="showPanel('profile')">Min profil</button>
       <div class="nav-right">
@@ -336,8 +336,8 @@
       <h2>Mina bedömningar</h2>
 
       <div class="btn-row">
-        <button class="btn-primary"   id="tab-sent"     onclick="setAssessmentTab('sent')">Skickade</button>
         <button class="btn-secondary" id="tab-received" onclick="setAssessmentTab('received')">Mottagna</button>
+        <button class="btn-primary"   id="tab-sent"     onclick="setAssessmentTab('sent')">Skickade</button>
       </div>
 
       <div class="filter-box">
@@ -795,6 +795,8 @@
       const recipient = document.getElementById('recipient').value;
       const formType  = document.querySelector('input[name="formtype"]:checked')?.value;
       if (!category || !recipient || !formType) { alert('Fyll i alla obligatoriska fält.'); return; }
+      setStatus('assessment-status', '⏳ Skickar bedömning...', false);
+      document.getElementById('submit-btn').disabled = true;
       saveCurrentSectionAnswers(currentSection);
       const answerList = Object.values(savedAnswers).map(a => ({
         clinic: currentUser.clinic,
@@ -823,7 +825,7 @@
         status.className = 'status-ok';
         setTimeout(() => { status.textContent = ''; }, 4000);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-      } catch(err) { setStatus('assessment-status', err.message, true); }
+      } catch(err) { setStatus('assessment-status', err.message, true); document.getElementById('submit-btn').disabled = false; }
     }
 
     // ── My assessments ────────────────────────────────────────────
@@ -861,8 +863,9 @@
 
     function updateFormTypeFilters(assessments) {
       const types = [...new Set(assessments.map(a => a.formType))].sort();
-      if (JSON.stringify(types) === JSON.stringify(availableFormTypes)) return;
       availableFormTypes = types;
+      const counts = {};
+      assessments.forEach(a => { counts[a.formType] = (counts[a.formType] || 0) + 1; });
       const container = document.getElementById('filter-formtypes');
       container.innerHTML = '';
       types.forEach(t => {
@@ -871,7 +874,7 @@
         const cb = document.createElement('input');
         cb.type = 'checkbox'; cb.value = t;
         lbl.appendChild(cb);
-        lbl.appendChild(document.createTextNode(t));
+        lbl.appendChild(document.createTextNode(`${t} (${counts[t]})`));
         container.appendChild(lbl);
       });
     }
@@ -992,6 +995,7 @@
       const newPin     = document.getElementById('profile-new-pin').value.trim();
       if (!currentPin || !newPin) { setStatus('profile-pin-status', 'Fyll i båda fälten.', true); return; }
       if (!/^\d{4,6}$/.test(newPin)) { setStatus('profile-pin-status', 'Ny PIN måste vara 4–6 siffror.', true); return; }
+      setStatus('profile-pin-status', '⏳ Byter PIN...', false);
       try {
         const user = await api('login', { email: currentUser.email, pin: currentPin });
         if (!user) { setStatus('profile-pin-status', 'Nuvarande PIN är felaktig.', true); return; }
@@ -1078,6 +1082,9 @@
       if (panel === 'assessment') {
         const formOpen = !document.getElementById('f6-container').classList.contains('hidden');
         if (!formOpen) showSelectionFields();
+      }
+      if (panel === 'my-assessments') {
+        applyFilters();
       }
     }
 
