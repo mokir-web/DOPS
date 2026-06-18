@@ -448,7 +448,7 @@
     ];
 
     // ── GAS backend URL — BYTA UT MOT DIN /exec URL ─────────────
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbxcXkJx8GrRcVeDDf095aqsf0n_uvkCDHfJeRLeFtUcx_Ti0GdH0Wf6MBUBA1sNoESx/exec';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbxRcUgHOhJ9mGpD9IiSK282D22djPq5IWKhJ8Hkbcg6Cwhy_pkKXLIaLI530uCqqfg/exec';
     // Exempel: 'https://script.google.com/macros/s/AKfyc.../exec'
 
     // ── API helper via fetch ──────────────────────────────────────
@@ -683,11 +683,15 @@
           const group = document.createElement('div');
           group.className = 'checkbox-group';
           let opts = [];
+          console.log('multi question:', q.question, '| autofill:', q.autofill, '| options:', q.options, '| clinic:', currentUser.clinic);
+          console.log('appData.lists.Spec:', appData.lists['Spec']);
           if (q.autofill && appData.lists[q.autofill]) {
             const clinic = currentUser.clinic;
             opts = appData.lists[q.autofill][clinic] || [];
+            console.log('opts from autofill:', opts);
           } else {
             opts = q.options;
+            console.log('opts from options:', opts);
           }
           const savedVals = savedVal ? savedVal.split(', ') : [];
           opts.forEach(opt => {
