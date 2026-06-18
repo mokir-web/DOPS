@@ -43,7 +43,6 @@
       padding-bottom: 16px; border-bottom: 1.5px solid #c4b8ac;
     }
     .nav button { flex-shrink: 0; }
-    #nav-hamburger { display: none; }
     .nav-desktop { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .nav-right {
       margin-left: auto; display: flex; gap: 8px;
@@ -147,6 +146,13 @@
       .nav { gap: 6px; }
       .nav-right { margin-left: auto; }
       #nav-user { font-size: 14px; }
+      .hamburger { display: block; }
+      .nav-menu { display: none; width: 100%; flex-direction: column; align-items: stretch; margin-top: 8px; }
+      .nav-menu.open { display: flex; }
+      .nav-menu button { width: 100%; text-align: left; }
+      .nav { gap: 6px; border-bottom: none; padding-bottom: 8px; }
+      .nav-right { margin-left: auto; }
+      #nav-user { font-size: 15px; }
       .date-grid { grid-template-columns: 1fr; }
       #login-panel { margin: 16px auto; padding: 16px; border: none; border-radius: 0; }
       .assessment-card { padding: 12px; }
@@ -273,23 +279,15 @@
   <div id="app" class="hidden">
 
     <div class="nav">
-      <!-- Desktop nav -->
-      <div class="nav-desktop">
-        <button class="btn-primary"   onclick="showPanel('assessment')">Registrera bedömning</button>
-        <button class="btn-secondary" onclick="showPanel('my-assessments')">Mina bedömningar</button>
-        <button class="btn-secondary" onclick="showPanel('profile')">Min profil</button>
-      </div>
-      <!-- Hamburger (mobil) -->
-      <button id="nav-hamburger" class="btn-secondary btn-small" onclick="toggleNavMenu()">☰ Meny</button>
-      <div id="nav-menu">
-        <button class="btn-primary"   onclick="showPanel('assessment'); closeNavMenu()">Registrera bedömning</button>
-        <button class="btn-secondary" onclick="showPanel('my-assessments'); closeNavMenu()">Mina bedömningar</button>
-        <button class="btn-secondary" onclick="showPanel('profile'); closeNavMenu()">Min profil</button>
-        <button class="btn-danger"    onclick="doLogout()">Logga ut</button>
+      <button class="hamburger" onclick="toggleMenu()" aria-label="Meny">☰</button>
+      <div class="nav-menu" id="nav-menu">
+        <button class="btn-primary"   onclick="showPanel('assessment'); closeMenu()">Registrera bedömning</button>
+        <button class="btn-secondary" onclick="showPanel('my-assessments'); closeMenu()">Mina bedömningar</button>
+        <button class="btn-secondary" onclick="showPanel('profile'); closeMenu()">Min profil</button>
       </div>
       <div class="nav-right">
         <span id="nav-user"></span>
-        <button class="btn-danger nav-desktop" onclick="doLogout()">Logga ut</button>
+        <button class="btn-danger" onclick="doLogout()">Logga ut</button>
       </div>
     </div>
 
@@ -1087,12 +1085,6 @@
     }
 
     // ── Helpers ───────────────────────────────────────────────────
-    function toggleNavMenu() {
-      document.getElementById('nav-menu').classList.toggle('open');
-    }
-    function closeNavMenu() {
-      document.getElementById('nav-menu').classList.remove('open');
-    }
     // Stäng menyn om man klickar utanför
     document.addEventListener('click', function(e) {
       const menu = document.getElementById('nav-menu');
