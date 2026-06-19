@@ -382,6 +382,8 @@
       <div class="nav-desktop-btns">
         <button class="nav-btn active" id="nav-btn-assessment"     onclick="showPanel('assessment')">Registrera bedömning</button>
         <button class="nav-btn"        id="nav-btn-my-assessments" onclick="showPanel('my-assessments')">Mina bedömningar</button>
+        <button class="nav-btn"        id="nav-btn-statistics"     onclick="showPanel('statistics')">Statistik</button>
+        <button class="nav-btn"        id="nav-btn-about"          onclick="showPanel('about')">Om MoraDOPS</button>
         <button class="nav-btn"        id="nav-btn-profile"        onclick="showPanel('profile')">Min profil</button>
       </div>
       <!-- Desktop: användare + logga ut -->
@@ -413,6 +415,8 @@
       <div class="nav-menu" id="nav-menu">
         <button class="nav-btn active" id="nav-mob-btn-assessment"     onclick="showPanel('assessment'); closeMenu()">Registrera bedömning</button>
         <button class="nav-btn"        id="nav-mob-btn-my-assessments" onclick="showPanel('my-assessments'); closeMenu()">Mina bedömningar</button>
+        <button class="nav-btn"        id="nav-mob-btn-statistics"     onclick="showPanel('statistics'); closeMenu()">Statistik</button>
+        <button class="nav-btn"        id="nav-mob-btn-about"          onclick="showPanel('about'); closeMenu()">Om MoraDOPS</button>
         <button class="nav-btn"        id="nav-mob-btn-profile"        onclick="showPanel('profile'); closeMenu()">Min profil</button>
         <button class="btn-danger"     onclick="doLogout(); closeMenu()">Logga ut</button>
       </div>
@@ -515,6 +519,49 @@
 
       <div id="my-assessments-list" style="margin-top:14px;"></div>
       <div id="export-status" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- ── STATISTICS ───────────────────────────────────────────── -->
+    <div id="panel-statistics" class="hidden">
+      <h2>Statistik</h2>
+      <div class="filter-box" style="margin-bottom:20px;">
+        <div class="date-grid">
+          <div><label class="field-label">Från datum</label><input type="date" id="stat-date-from"></div>
+          <div><label class="field-label">Till datum</label><input type="date" id="stat-date-to"></div>
+        </div>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn-primary" onclick="loadStatistics()">Visa statistik</button>
+          <button class="btn-secondary" onclick="document.getElementById('stat-date-from').value=''; document.getElementById('stat-date-to').value=''; loadStatistics()">Alla</button>
+        </div>
+      </div>
+      <div id="statistics-content"><p style="color:#888;">Klicka "Visa statistik" för att ladda data.</p></div>
+    </div>
+
+    <!-- ── ABOUT ─────────────────────────────────────────────────── -->
+    <div id="panel-about" class="hidden">
+      <h2>Om MoraDOPS</h2>
+      <div style="max-width:720px;">
+        <div class="section-header">Vad är MoraDOPS?</div>
+        <p>MoraDOPS är ett digitalt bedömningssystem för kirurgkliniken på Mora lasarett. Systemet ersätter tidigare pappersbaserade och Google Forms-baserade flöden och samlar alla bedömningar på ett ställe.</p>
+
+        <div class="section-header">Formulärtyper</div>
+        <p><strong>DOPS</strong> (Direct Observation of Procedural Skills) – används för att bedöma praktiska färdigheter vid specifika kirurgiska ingrepp eller åtgärder.</p>
+        <p><strong>Mini-CEX</strong> (Mini Clinical Evaluation Exercise) – en kortare strukturerad observation av kliniskt arbete, t.ex. ett patientmöte eller rond.</p>
+        <p><strong>360 GRADER</strong> – strukturerad feedback från kollegor, sjuksköterskor och annan personal om professionellt bemötande och samarbete.</p>
+        <p><strong>Återkoppling efter muntlig presentation</strong> – strukturerad bedömning efter journalgenomgång, fallpresentation eller liknande.</p>
+        <p><strong>Videogranskning</strong> – bedömning av inspelat operationsförlopp.</p>
+        <p><strong>Självskattning inför specialistkollegium</strong> – ST-läkarens egen bedömning av sina kompetenser inför kollegiet.</p>
+        <p><strong>Rapport från specialistkollegium</strong> – handledare och specialists samlade bedömning efter genomfört kollegium.</p>
+
+        <div class="section-header">Behörighetsnivåer</div>
+        <p>Systemet använder en hierarki för vem som kan bedöma vem. Specialister (Spec) kan bedöma alla. ST-läkare kan bedöma AT- och BT-läkare. Rollen sätts vid registrering och kan ändras under Min profil.</p>
+
+        <div class="section-header">Kontakt och administration</div>
+        <p>För frågor om systemet, kontakta studierektor på kirurgkliniken, Mora lasarett.</p>
+
+        <div class="section-header">Version</div>
+        <p>MoraDOPS 3.1 · Mora lasarett · Kirurgi</p>
+      </div>
     </div>
 
     <!-- ── PROFILE ────────────────────────────────────────────── -->
@@ -1136,6 +1183,73 @@
       document.getElementById('selected-count').textContent = count > 0 ? `${count} markerade` : '';
     }
 
+    async function loadStatistics() {
+      const dateFrom = document.getElementById('stat-date-from')?.value || null;
+      const dateTo   = document.getElementById('stat-date-to')?.value || null;
+      const el = document.getElementById('statistics-content');
+      el.innerHTML = '<p style="color:#888;">Hämtar data...</p>';
+      try {
+        const stats = await api('getStatistics', { filters: { dateFrom, dateTo } });
+        let html = '';
+
+        // Totalt
+        html += `<div class="section-header">Totalt antal bedömningar</div>`;
+        html += `<p style="font-size:28px; font-weight:bold; color:#3d5c4a; margin:12px 0;">${stats.total}</p>`;
+
+        // Per formulärtyp
+        html += `<div class="section-header">Per formulärtyp</div>`;
+        html += '<table style="width:100%;max-width:600px;border-collapse:collapse;margin-top:10px;">';
+        Object.entries(stats.byFormType).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => {
+          const pct = stats.total > 0 ? Math.round(v/stats.total*100) : 0;
+          html += `<tr><td style="padding:7px 0;border-bottom:1px solid #d8d0c8;">${k}</td>
+            <td style="padding:7px 8px;border-bottom:1px solid #d8d0c8;text-align:right;font-weight:bold;">${v}</td>
+            <td style="padding:7px 0 7px 12px;border-bottom:1px solid #d8d0c8;width:40%;">
+              <div style="background:#d8cfc5;border-radius:4px;height:10px;">
+                <div style="background:#3d5c4a;border-radius:4px;height:10px;width:${pct}%;"></div>
+              </div></td></tr>`;
+        });
+        html += '</table>';
+
+        // Per månad
+        const months = Object.entries(stats.byMonth).sort((a,b) => a[0].localeCompare(b[0]));
+        if (months.length > 0) {
+          html += `<div class="section-header">Per månad</div>`;
+          html += '<table style="width:100%;max-width:600px;border-collapse:collapse;margin-top:10px;">';
+          months.forEach(([k,v]) => {
+            const pct = Math.round(v.count / Math.max(...months.map(m=>m[1].count)) * 100);
+            html += `<tr><td style="padding:7px 0;border-bottom:1px solid #d8d0c8;min-width:100px;">${v.label}</td>
+              <td style="padding:7px 8px;border-bottom:1px solid #d8d0c8;text-align:right;font-weight:bold;">${v.count}</td>
+              <td style="padding:7px 0 7px 12px;border-bottom:1px solid #d8d0c8;width:40%;">
+                <div style="background:#d8cfc5;border-radius:4px;height:10px;">
+                  <div style="background:#3d5c4a;border-radius:4px;height:10px;width:${pct}%;"></div>
+                </div></td></tr>`;
+          });
+          html += '</table>';
+        }
+
+        // Mest aktiva
+        html += `<div class="section-header">Mest aktiva registrerare</div>`;
+        html += '<table style="width:100%;max-width:600px;border-collapse:collapse;margin-top:10px;">';
+        Object.entries(stats.byRegistrar).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(([k,v]) => {
+          html += `<tr><td style="padding:7px 0;border-bottom:1px solid #d8d0c8;">${k}</td>
+            <td style="padding:7px 0;border-bottom:1px solid #d8d0c8;text-align:right;font-weight:bold;">${v}</td></tr>`;
+        });
+        html += '</table>';
+
+        html += `<div class="section-header">Mest bedömda</div>`;
+        html += '<table style="width:100%;max-width:600px;border-collapse:collapse;margin-top:10px;">';
+        Object.entries(stats.byRecipient).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(([k,v]) => {
+          html += `<tr><td style="padding:7px 0;border-bottom:1px solid #d8d0c8;">${k}</td>
+            <td style="padding:7px 0;border-bottom:1px solid #d8d0c8;text-align:right;font-weight:bold;">${v}</td></tr>`;
+        });
+        html += '</table>';
+
+        el.innerHTML = html;
+      } catch(err) {
+        el.innerHTML = `<p class="status-err">Fel: ${err.message}</p>`;
+      }
+    }
+
     async function exportSelected() {
       const selected = [...document.querySelectorAll('.assessment-checkbox:checked')]
         .map(cb => currentAssessments[parseInt(cb.dataset.idx)]);
@@ -1273,6 +1387,24 @@
       }
     });
 
+    function resetAssessment() {
+      // Nollställ alltid när man går till Registrera bedömning
+      savedAnswers = {};
+      currentFormData = null;
+      document.querySelectorAll('input[name="category"]').forEach(r => r.checked = false);
+      document.querySelectorAll('input[name="formtype"]').forEach(r => r.checked = false);
+      document.getElementById('recipient').innerHTML = '<option value="">-- Välj mottagare --</option>';
+      document.getElementById('form-type-group').innerHTML = '';
+      document.getElementById('form-questions').innerHTML = '';
+      const submitBtn = document.getElementById('submit-btn');
+      if (submitBtn) submitBtn.disabled = false;
+      document.getElementById('assessment-status').textContent = '';
+      show('f4', false); show('f5', false); show('f-till-bedomning', false);
+      show('f6-container', false); show('submit-btn', false);
+      showSelectionFields();
+      prefillAssessment();
+    }
+
     function showSelectionFields() {
       ['f-intro','f1','f2','f3','f4','f5'].forEach(id => show(id, true));
       show('f-till-bedomning', true);
@@ -1282,22 +1414,24 @@
     }
 
     function showPanel(panel) {
-      ['assessment','my-assessments','profile'].forEach(p =>
+      ['assessment','my-assessments','statistics','about','profile'].forEach(p =>
         show(`panel-${p}`, p === panel)
       );
       // Uppdatera aktiv nav-knapp desktop + mobil
-      ['assessment','my-assessments','profile'].forEach(p => {
+      ['assessment','my-assessments','statistics','about','profile'].forEach(p => {
         const btn    = document.getElementById(`nav-btn-${p}`);
         const mobBtn = document.getElementById(`nav-mob-btn-${p}`);
         if (btn)    btn.classList.toggle('active', p === panel);
         if (mobBtn) mobBtn.classList.toggle('active', p === panel);
       });
       if (panel === 'assessment') {
-        const formOpen = !document.getElementById('f6-container').classList.contains('hidden');
-        if (!formOpen) showSelectionFields();
+        resetAssessment();
       }
       if (panel === 'my-assessments') {
         applyFilters();
+      }
+      if (panel === 'statistics') {
+        loadStatistics();
       }
     }
 
