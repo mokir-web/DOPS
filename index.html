@@ -1408,13 +1408,10 @@
             const totStr = h > 0 ? h + ' tim ' + m + ' min' : m + ' min';
             document.getElementById('confirm-time-total').textContent =
               'Totalt sparat med MoraDOPS: ' + totStr;
-            const contexts = [
-              tot >= 120 ? 'Tid nog för ett operationspass.' : null,
-              tot >= 60  ? 'Ungefär lika lång tid som en lunch.' : null,
-              tot >= 30  ? 'Tillräckligt för en fika och en rond.' : null,
-              tot >= 10  ? 'Tid du lagt på patienter istället.' : null,
-            ].filter(Boolean);
-            const ctx = contexts[0] || '';
+            // Hämta kontextmeningar från appData (Kontextmeningar-sheetet)
+            const phrases = (appData && appData.contextPhrases) || [];
+            const match = phrases.filter(c => tot >= c.min && tot < c.max);
+            const ctx = match.length ? match[Math.floor(Math.random() * match.length)].text : '';
             document.getElementById('confirm-time-context').textContent = ctx;
           }).catch(() => {});
         } else if (confirmTimeEl) {
