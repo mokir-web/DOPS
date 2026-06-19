@@ -42,9 +42,9 @@
       flex-wrap: wrap; align-items: center;
       padding-bottom: 16px; border-bottom: 1.5px solid #c4b8ac;
     }
-    .nav > .nav-logo-desktop { order: 0; }
-    .nav > .nav-desktop-btns { order: 1; flex: 1; }
-    .nav > .nav-right { order: 2; }
+    .nav > .nav-logo-desktop { order: 0; flex-shrink: 0; }
+    .nav > .nav-desktop-btns { order: 1; flex: 1; min-width: 0; }
+    .nav > .nav-right { order: 2; flex-shrink: 0; }
     .nav button { flex-shrink: 0; }
     .nav-right {
       margin-left: auto; display: flex; gap: 12px;
@@ -52,10 +52,10 @@
     }
     .nav-user-info { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
     .nav-mobile-user { display: flex; flex-direction: column; gap: 2px; padding: 10px 0 14px; border-bottom: 1px solid #c4b8ac; margin-bottom: 8px; }
-    .nav-logo-desktop { display: flex; align-items: center; margin-right: 16px; }
+    .nav-logo-desktop { display: flex; align-items: center; gap: 8px; margin-right: 16px; }
     .nav-mobile-top { display: none; align-items: center; justify-content: space-between; flex: 1; margin-left: 10px; }
     .nav-mobile-user-top { display: flex; flex-direction: column; gap: 1px; }
-    .nav-desktop-btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .nav-desktop-btns { display: grid; grid-template-columns: repeat(4, auto); gap: 6px; align-items: start; justify-content: start; }
     .hamburger { display: none; background: #3d5c4a; color: #f0ede8; border: none; border-radius: 5px; padding: 13px 18px; cursor: pointer; font-size: 20px; line-height: 1; min-height: 48px; }
     .nav-menu { display: none; }
     .nav-mobile-top { display: none; }
@@ -377,16 +377,14 @@
 
     <div class="nav">
       <!-- Desktop: logo centrerat -->
-      <div class="nav-logo-desktop">
-        <div style="display:flex;align-items:center;gap:10px;">
-        <svg width="42" height="42" viewBox="0 0 44 44" style="overflow:visible;">
+      <div class="nav-logo-desktop" onclick="showPanel('assessment')" style="cursor:pointer;">
+        <svg width="38" height="38" viewBox="0 0 44 44" style="overflow:visible;flex-shrink:0;">
           <circle cx="22" cy="22" r="17" fill="none" stroke="#2a1f18" stroke-width="2"/>
           <text x="22" y="27" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#2a1f18" text-anchor="middle">MD</text>
           <circle cx="35" cy="35" r="8" fill="#4a9e62"/>
           <polyline points="30,35 33,38 40,31" fill="none" stroke="#f0ede8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <span style="font-family:Arial,sans-serif;font-size:19px;font-weight:700;color:#2a1f18;letter-spacing:-0.3px;">MoraDOPS</span>
-      </div>
+        <span style="font-family:Arial,sans-serif;font-size:17px;font-weight:700;color:#2a1f18;letter-spacing:-0.3px;">MoraDOPS</span>
       </div>
       <!-- Desktop knappar -->
       <div class="nav-desktop-btns">
