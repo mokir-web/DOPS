@@ -122,6 +122,16 @@
 
     button:disabled { background: #ccc !important; color: #888 !important; border-color: #ccc !important; cursor: not-allowed !important; }
 
+    /* Privilege toggle */
+    .priv-toggle { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .priv-btn {
+      padding: 6px 12px; font-size: 13px; border-radius: 14px;
+      border: 1.5px solid #c4b8ac; background: #f5f1ec; color: #6b5c52;
+      cursor: pointer; white-space: nowrap;
+    }
+    .priv-btn:hover { background: #e8e2da; }
+    .priv-btn.active { background: #3d5c4a; color: #f0ede8; border-color: #3d5c4a; font-weight: bold; }
+
     /* Enhetlig display-fält (klinik, registrerare) */
     .display-field {
       width: 100%; max-width: 560px; padding: 11px 10px; font-size: 18px;
@@ -380,14 +390,17 @@
       </div>
       <!-- Desktop knappar -->
       <div class="nav-desktop-btns">
-        <button class="nav-btn active" id="nav-btn-assessment"     onclick="showPanel('assessment')">Registrera bedömning</button>
-        <button class="nav-btn"        id="nav-btn-my-assessments" onclick="showPanel('my-assessments')">Mina bedömningar</button>
-        <button class="nav-btn"        id="nav-btn-statistics"     onclick="showPanel('statistics')">Statistik</button>
-        <button class="nav-btn"        id="nav-btn-about"          onclick="showPanel('about')">Om MoraDOPS</button>
-        <button class="nav-btn"        id="nav-btn-profile"        onclick="showPanel('profile')">Min profil</button>
+        <button class="nav-btn active" id="nav-btn-assessment"        onclick="showPanel('assessment')">Registrera bedömning</button>
+        <button class="nav-btn"        id="nav-btn-my-assessments"    onclick="showPanel('my-assessments')">Mina bedömningar</button>
+        <button class="nav-btn hidden" id="nav-btn-clinic-overview"   onclick="showPanel('clinic-overview')">Kliniköversikt</button>
+        <button class="nav-btn hidden" id="nav-btn-admin"             onclick="showPanel('admin')">Administration</button>
+        <button class="nav-btn"        id="nav-btn-statistics"        onclick="showPanel('statistics')">Statistik</button>
+        <button class="nav-btn"        id="nav-btn-about"             onclick="showPanel('about')">Om MoraDOPS</button>
+        <button class="nav-btn"        id="nav-btn-profile"           onclick="showPanel('profile')">Min profil</button>
       </div>
       <!-- Desktop: användare + logga ut -->
       <div class="nav-right">
+        <div id="privilege-toggle"></div>
         <div class="nav-user-info">
           <span id="nav-user" style="font-weight:bold;"></span>
           <span id="nav-clinic" style="font-size:13px; color:#6b5c52;"></span>
@@ -413,11 +426,14 @@
       </div>
       <!-- Mobil dropdown -->
       <div class="nav-menu" id="nav-menu">
-        <button class="nav-btn active" id="nav-mob-btn-assessment"     onclick="showPanel('assessment'); closeMenu()">Registrera bedömning</button>
-        <button class="nav-btn"        id="nav-mob-btn-my-assessments" onclick="showPanel('my-assessments'); closeMenu()">Mina bedömningar</button>
-        <button class="nav-btn"        id="nav-mob-btn-statistics"     onclick="showPanel('statistics'); closeMenu()">Statistik</button>
-        <button class="nav-btn"        id="nav-mob-btn-about"          onclick="showPanel('about'); closeMenu()">Om MoraDOPS</button>
-        <button class="nav-btn"        id="nav-mob-btn-profile"        onclick="showPanel('profile'); closeMenu()">Min profil</button>
+        <div id="privilege-toggle-mob"></div>
+        <button class="nav-btn active" id="nav-mob-btn-assessment"        onclick="showPanel('assessment'); closeMenu()">Registrera bedömning</button>
+        <button class="nav-btn"        id="nav-mob-btn-my-assessments"    onclick="showPanel('my-assessments'); closeMenu()">Mina bedömningar</button>
+        <button class="nav-btn hidden" id="nav-mob-btn-clinic-overview"   onclick="showPanel('clinic-overview'); closeMenu()">Kliniköversikt</button>
+        <button class="nav-btn hidden" id="nav-mob-btn-admin"             onclick="showPanel('admin'); closeMenu()">Administration</button>
+        <button class="nav-btn"        id="nav-mob-btn-statistics"        onclick="showPanel('statistics'); closeMenu()">Statistik</button>
+        <button class="nav-btn"        id="nav-mob-btn-about"             onclick="showPanel('about'); closeMenu()">Om MoraDOPS</button>
+        <button class="nav-btn"        id="nav-mob-btn-profile"           onclick="showPanel('profile'); closeMenu()">Min profil</button>
         <button class="btn-danger"     onclick="doLogout(); closeMenu()">Logga ut</button>
       </div>
     </div>
@@ -564,6 +580,60 @@
       </div>
     </div>
 
+    <!-- ── CLINIC OVERVIEW ──────────────────────────────────────── -->
+    <div id="panel-clinic-overview" class="hidden">
+      <h2>Kliniköversikt</h2>
+      <div class="filter-box" style="margin-bottom:20px;">
+        <div class="date-grid">
+          <div><label class="field-label">Från datum</label><input type="date" id="co-date-from"></div>
+          <div><label class="field-label">Till datum</label><input type="date" id="co-date-to"></div>
+        </div>
+        <div class="field">
+          <label class="field-label">Mottagarkategori</label>
+          <select id="co-category">
+            <option value="">Alla</option>
+            <option value="ST">ST</option>
+            <option value="Spec">Spec</option>
+            <option value="AT">AT</option>
+            <option value="BT">BT</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Mottagare (fritext)</label>
+          <input type="text" id="co-recipient" placeholder="Sök namn...">
+        </div>
+        <div class="field">
+          <label class="field-label">Formulärtyp</label>
+          <div id="co-formtypes" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;"></div>
+        </div>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn-primary" onclick="loadClinicOverview()">Sök</button>
+          <button class="btn-secondary" onclick="resetClinicFilters()">Återställ</button>
+        </div>
+      </div>
+      <div id="co-actions" class="hidden" style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="co-select-all" onchange="toggleCoSelectAll(this.checked)"> Markera alla
+        </label>
+        <button class="btn-primary" onclick="exportCoSelected()">📄 Exportera markerade som Word</button>
+        <span id="co-selected-count" style="font-size:13px;color:#6b5c52;"></span>
+      </div>
+      <div id="co-list" style="margin-top:14px;"></div>
+      <div id="co-export-status" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- ── ADMIN ──────────────────────────────────────────────────── -->
+    <div id="panel-admin" class="hidden">
+      <h2>Administration</h2>
+      <div class="section-header">Kliniker</div>
+      <div id="admin-clinics-list" style="margin-top:12px;"><p style="color:#888;">Läser in...</p></div>
+      <div class="section-header" style="margin-top:24px;">Alla användare</div>
+      <div class="field">
+        <input type="text" id="admin-user-search" placeholder="Sök namn eller e-post..." oninput="filterAdminUsers()">
+      </div>
+      <div id="admin-users-list" style="margin-top:12px;"><p style="color:#888;">Läser in...</p></div>
+    </div>
+
     <!-- ── PROFILE ────────────────────────────────────────────── -->
 
     <div id="panel-profile" class="hidden">
@@ -626,6 +696,8 @@
     let currentAssessmentRole = 'sent';
     let currentAssessments = [];
     let availableFormTypes = [];
+    let activePrivilege = null; // null = standardvy, 'Studierektor', 'Administratör'
+    let clinicAssessments = [];
 
     const hierarchy = ['Spec', 'ST', 'BT', 'AT'];
     // Formulärtyper hämtas dynamiskt från Sheets via appData.formTypes
@@ -668,6 +740,7 @@
     };
 
     function bootApp() {
+      activePrivilege = null; // Alltid standardvy vid inloggning
       document.getElementById('login-panel').classList.add('hidden');
       document.getElementById('app').classList.remove('hidden');
       const fullName = `${currentUser.firstName} ${currentUser.lastName}`;
@@ -677,11 +750,48 @@
       const mobClinic = document.getElementById('nav-clinic-mob');
       if (mobUser) mobUser.textContent = fullName;
       if (mobClinic) mobClinic.textContent = currentUser.clinic;
-      // Hamburgare – sätt onclick via JS (säkrare än inline på mobil)
       const hbtn = document.getElementById('hamburger-btn');
       if (hbtn) hbtn.onclick = toggleMenu;
+      renderPrivilegeToggle();
       prefillAssessment();
       prefillProfile();
+      showPanel('assessment');
+    }
+
+    function renderPrivilegeToggle() {
+      const privs = currentUser.privileges || [];
+      const container = document.getElementById('privilege-toggle');
+      const mobContainer = document.getElementById('privilege-toggle-mob');
+      if (!container) return;
+      if (privs.length === 0) {
+        container.innerHTML = '';
+        if (mobContainer) mobContainer.innerHTML = '';
+        return;
+      }
+      let html = `<div class="priv-toggle">
+        <button class="priv-btn ${activePrivilege === null ? 'active' : ''}" onclick="setPrivilege(null)">Standardvy</button>`;
+      privs.forEach(p => {
+        html += `<button class="priv-btn ${activePrivilege === p.privilege ? 'active' : ''}" onclick="setPrivilege('${p.privilege}', '${p.klinikId}')">${p.privilege}</button>`;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+      if (mobContainer) mobContainer.innerHTML = html.replace(/onclick=/g, 'onclick=').replace(/closeMenu\(\)/g, '');
+    }
+
+    function setPrivilege(privilege, klinikId) {
+      activePrivilege = privilege;
+      activeKlinikId = klinikId || null;
+      renderPrivilegeToggle();
+      closeMenu();
+      // Uppdatera nav-paneler baserat på privilegium
+      const clinicBtn = document.getElementById('nav-btn-clinic-overview');
+      const mobClinicBtn = document.getElementById('nav-mob-btn-clinic-overview');
+      const adminBtn = document.getElementById('nav-btn-admin');
+      const mobAdminBtn = document.getElementById('nav-mob-btn-admin');
+      if (clinicBtn) clinicBtn.classList.toggle('hidden', privilege !== 'Studierektor' && privilege !== 'Administratör');
+      if (mobClinicBtn) mobClinicBtn.classList.toggle('hidden', privilege !== 'Studierektor' && privilege !== 'Administratör');
+      if (adminBtn) adminBtn.classList.toggle('hidden', privilege !== 'Administratör');
+      if (mobAdminBtn) mobAdminBtn.classList.toggle('hidden', privilege !== 'Administratör');
       showPanel('assessment');
     }
 
@@ -1183,6 +1293,160 @@
       document.getElementById('selected-count').textContent = count > 0 ? `${count} markerade` : '';
     }
 
+    async function loadClinicOverview() {
+      const klinikId = activeKlinikId || currentUser.klinikId || '*';
+      const filters = {
+        dateFrom:  document.getElementById('co-date-from')?.value || null,
+        dateTo:    document.getElementById('co-date-to')?.value || null,
+        category:  document.getElementById('co-category')?.value || '',
+        recipient: document.getElementById('co-recipient')?.value || '',
+        formTypes: [...document.querySelectorAll('#co-formtypes input:checked')].map(cb => cb.value)
+      };
+      const list = document.getElementById('co-list');
+      list.innerHTML = '<p style="color:#888;">Hämtar bedömningar...</p>';
+      show('co-actions', false);
+      try {
+        const assessments = await api('getClinicAssessments', { klinikId, filters });
+        clinicAssessments = assessments;
+        renderClinicAssessments(assessments);
+        updateCoFormTypeFilters(assessments);
+      } catch(err) {
+        list.innerHTML = `<p class="status-err">Fel: ${err.message}</p>`;
+      }
+    }
+
+    function resetClinicFilters() {
+      document.getElementById('co-date-from').value = '';
+      document.getElementById('co-date-to').value = '';
+      document.getElementById('co-category').value = '';
+      document.getElementById('co-recipient').value = '';
+      document.querySelectorAll('#co-formtypes input').forEach(cb => cb.checked = false);
+      loadClinicOverview();
+    }
+
+    function updateCoFormTypeFilters(assessments) {
+      const types = [...new Set(assessments.map(a => a.formType))].sort();
+      const container = document.getElementById('co-formtypes');
+      container.innerHTML = '';
+      const counts = {};
+      assessments.forEach(a => { counts[a.formType] = (counts[a.formType]||0)+1; });
+      types.forEach(t => {
+        const lbl = document.createElement('label');
+        lbl.className = 'filter-chip';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.value = t;
+        lbl.appendChild(cb);
+        lbl.appendChild(document.createTextNode(`${t} (${counts[t]})`));
+        container.appendChild(lbl);
+      });
+    }
+
+    function renderClinicAssessments(assessments) {
+      const list = document.getElementById('co-list');
+      if (!assessments.length) {
+        list.innerHTML = '<p style="color:#888;">Inga bedömningar hittades.</p>';
+        show('co-actions', false);
+        return;
+      }
+      list.innerHTML = `<p style="color:#6b5c52;font-size:13px;">${assessments.length} bedömning(ar)</p>`;
+      show('co-actions', true);
+      updateCoSelectedCount();
+      assessments.forEach((a, idx) => {
+        const card = document.createElement('div');
+        card.className = 'assessment-card';
+        const topRow = document.createElement('div');
+        topRow.style.cssText = 'display:flex;align-items:center;gap:10px;';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.className = 'co-checkbox'; cb.dataset.idx = idx;
+        cb.onchange = updateCoSelectedCount;
+        topRow.appendChild(cb);
+        const title = document.createElement('h4');
+        title.textContent = a.formType; title.style.margin = '0';
+        topRow.appendChild(title);
+        card.appendChild(topRow);
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.textContent = `${a.timestamp} · ${a.recipient ? a.recipient.split(' -- ')[0] : ''} (${a.category}) · Registr: ${a.registrar}`;
+        card.appendChild(meta);
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'btn-secondary btn-small';
+        toggleBtn.textContent = 'Visa svar';
+        const answersDiv = document.createElement('div');
+        answersDiv.className = 'assessment-answers hidden';
+        let lastSection = '';
+        a.answers.forEach(ans => {
+          if (ans.section !== lastSection) {
+            lastSection = ans.section;
+            const s = document.createElement('div');
+            s.className = 'ans-section'; s.textContent = ans.section;
+            answersDiv.appendChild(s);
+          }
+          const r = document.createElement('div');
+          r.className = 'ans-row'; r.textContent = `${ans.question}: ${ans.answer}`;
+          answersDiv.appendChild(r);
+        });
+        toggleBtn.onclick = () => {
+          const hidden = answersDiv.classList.toggle('hidden');
+          toggleBtn.textContent = hidden ? 'Visa svar' : 'Dölj svar';
+        };
+        card.appendChild(toggleBtn);
+        card.appendChild(answersDiv);
+        list.appendChild(card);
+      });
+    }
+
+    function toggleCoSelectAll(checked) {
+      document.querySelectorAll('.co-checkbox').forEach(cb => cb.checked = checked);
+      updateCoSelectedCount();
+    }
+
+    function updateCoSelectedCount() {
+      const count = document.querySelectorAll('.co-checkbox:checked').length;
+      document.getElementById('co-selected-count').textContent = count > 0 ? `${count} markerade` : '';
+    }
+
+    async function exportCoSelected() {
+      const selected = [...document.querySelectorAll('.co-checkbox:checked')]
+        .map(cb => clinicAssessments[parseInt(cb.dataset.idx)]);
+      if (!selected.length) { alert('Markera minst en bedömning.'); return; }
+      const filterInfo = {
+        name: 'Kliniköversikt',
+        clinic: currentUser.clinic,
+        period: `${document.getElementById('co-date-from').value || '…'} – ${document.getElementById('co-date-to').value || new Date().toISOString().slice(0,10)}`
+      };
+      setStatus('co-export-status', '⏳ Genererar dokument...', false);
+      try {
+        const result = await api('exportAssessmentsToDoc', { email: currentUser.email, assessments: selected, filterInfo });
+        setStatus('co-export-status', `✓ ${result.count} bedömning(ar) skickade till ${currentUser.email}`, false);
+      } catch(err) { setStatus('co-export-status', err.message, true); }
+    }
+
+    let allAdminUsers = [];
+    async function loadAdminPanel() {
+      try {
+        const data = await api('getData');
+        const clinicsEl = document.getElementById('admin-clinics-list');
+        clinicsEl.innerHTML = data.clinics.map(c =>
+          `<div style="padding:8px 0;border-bottom:1px solid #d8d0c8;">${c}</div>`
+        ).join('') || '<p style="color:#888;">Inga kliniker.</p>';
+      } catch(err) {
+        document.getElementById('admin-clinics-list').innerHTML = `<p class="status-err">${err.message}</p>`;
+      }
+    }
+
+    function filterAdminUsers() {
+      const q = document.getElementById('admin-user-search').value.toLowerCase();
+      const el = document.getElementById('admin-users-list');
+      const filtered = allAdminUsers.filter(u =>
+        `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(q)
+      );
+      el.innerHTML = filtered.length
+        ? filtered.map(u => `<div style="padding:8px 0;border-bottom:1px solid #d8d0c8;">
+            <strong>${u.firstName} ${u.lastName}</strong> · ${u.email} · ${u.jobRole} · ${u.clinic}
+          </div>`).join('')
+        : '<p style="color:#888;">Inga användare hittades.</p>';
+    }
+
     async function loadStatistics() {
       const dateFrom = document.getElementById('stat-date-from')?.value || null;
       const dateTo   = document.getElementById('stat-date-to')?.value || null;
@@ -1413,26 +1677,23 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    let activeKlinikId = null;
+
     function showPanel(panel) {
-      ['assessment','my-assessments','statistics','about','profile'].forEach(p =>
+      ['assessment','my-assessments','clinic-overview','admin','statistics','about','profile'].forEach(p =>
         show(`panel-${p}`, p === panel)
       );
-      // Uppdatera aktiv nav-knapp desktop + mobil
-      ['assessment','my-assessments','statistics','about','profile'].forEach(p => {
+      ['assessment','my-assessments','clinic-overview','admin','statistics','about','profile'].forEach(p => {
         const btn    = document.getElementById(`nav-btn-${p}`);
         const mobBtn = document.getElementById(`nav-mob-btn-${p}`);
         if (btn)    btn.classList.toggle('active', p === panel);
         if (mobBtn) mobBtn.classList.toggle('active', p === panel);
       });
-      if (panel === 'assessment') {
-        resetAssessment();
-      }
-      if (panel === 'my-assessments') {
-        applyFilters();
-      }
-      if (panel === 'statistics') {
-        loadStatistics();
-      }
+      if (panel === 'assessment')       { resetAssessment(); }
+      if (panel === 'my-assessments')   { applyFilters(); }
+      if (panel === 'statistics')       { loadStatistics(); }
+      if (panel === 'clinic-overview')  { loadClinicOverview(); }
+      if (panel === 'admin')            { loadAdminPanel(); }
     }
 
     function show(id, visible) {
