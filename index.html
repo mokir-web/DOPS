@@ -43,16 +43,22 @@
       padding-bottom: 16px; border-bottom: 1.5px solid #c4b8ac;
     }
     /* Sidebar layout */
-    .app-layout { display: flex; min-height: 100vh; }
-    .sidebar { width: 220px; min-width: 220px; background: #d4ccc4; display: flex; flex-direction: column; padding: 0; border-right: 1.5px solid #c4b8ac; }
+    .app-layout { display: flex; min-height: 100vh; align-items: flex-start; }
+    .sidebar { width: 220px; min-width: 220px; background: #d4ccc4; display: flex; flex-direction: column; padding: 0; border-right: 1.5px solid #c4b8ac; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
     .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 20px 16px 16px; border-bottom: 1.5px solid #c4b8ac; cursor: pointer; }
     .sidebar-logo-text { font-family: Arial,sans-serif; font-size: 16px; font-weight: 700; color: #2a1f18; }
-    .sidebar-nav { display: flex; flex-direction: column; padding: 8px 0; flex: 1; }
+    .sidebar-nav { display: flex; flex-direction: column; padding: 8px 0; flex: 1; overflow-y: auto; }
+    .sidebar-nav-bottom { display: flex; flex-direction: column; padding: 0 0 4px; border-top: 1px solid #c4b8ac; }
+    .sidebar-version { padding: 6px 18px; font-size: 11px; color: #9e8e82; }
     .sidebar-btn { display: block; width: 100%; text-align: left; padding: 11px 18px; font-size: 16px; background: none; border: none; border-left: 3px solid transparent; cursor: pointer; color: #2a1f18; font-family: Arial,sans-serif; }
     .sidebar-btn:hover { background: #cfc5b8; }
     .sidebar-btn.active { background: #3d5c4a; color: #f0ede8; border-left-color: #2a4234; font-weight: bold; }
     .sidebar-btn.hidden { display: none; }
-    .sidebar-footer { padding: 14px 16px; border-top: 1.5px solid #c4b8ac; }
+    .sidebar-footer { padding: 14px 16px; border-top: 1.5px solid #c4b8ac; margin-top: auto; }
+    .sidebar-nav-secondary { border-top: 1px solid #c4b8ac; padding: 6px 0; margin-top: auto; }
+    .sidebar-btn-secondary { display: block; width: 100%; text-align: left; padding: 8px 18px; font-size: 14px; background: none; border: none; border-left: 3px solid transparent; cursor: pointer; color: #6b5c52; font-family: Arial,sans-serif; }
+    .sidebar-btn-secondary:hover { background: #cfc5b8; color: #2a1f18; }
+    .sidebar-btn-secondary.active { background: #3d5c4a; color: #f0ede8; border-left-color: #2a4234; font-weight: bold; }
     .sidebar-user { font-size: 14px; font-weight: bold; color: #2a1f18; }
     .sidebar-clinic { font-size: 12px; color: #6b5c52; margin-top: 2px; }
     .sidebar-priv { margin-top: 8px; }
@@ -419,12 +425,15 @@
           <button class="sidebar-btn"        id="nav-btn-my-assessments"  onclick="showPanel('my-assessments')">Mina bedömningar</button>
           <button class="sidebar-btn hidden" id="nav-btn-clinic-overview" onclick="showPanel('clinic-overview')">Kliniköversikt</button>
           <button class="sidebar-btn hidden" id="nav-btn-admin"           onclick="showPanel('admin')">Administration</button>
-          <button class="sidebar-btn"        id="nav-btn-statistics"      onclick="showPanel('statistics')">Statistik</button>
-          <button class="sidebar-btn"        id="nav-btn-documents"       onclick="showPanel('documents')">Dokument</button>
-          <button class="sidebar-btn"        id="nav-btn-about"           onclick="showPanel('about')">Om MoraDOPS</button>
           <button class="sidebar-btn"        id="nav-btn-profile"         onclick="showPanel('profile')">Min profil</button>
         </div>
+        <div class="sidebar-nav-bottom">
+          <button class="sidebar-btn" id="nav-btn-statistics" onclick="showPanel('statistics')" style="font-size:14px;">Statistik</button>
+          <button class="sidebar-btn" id="nav-btn-documents"  onclick="showPanel('documents')"  style="font-size:14px;">Dokument</button>
+          <button class="sidebar-btn" id="nav-btn-about"      onclick="showPanel('about')"      style="font-size:14px;">Om MoraDOPS</button>
+        </div>
         <div class="sidebar-footer">
+          <div class="sidebar-version">MoraDOPS v3.2.0</div>
           <div class="sidebar-user" id="nav-user"></div>
           <div class="sidebar-clinic" id="nav-clinic"></div>
           <div class="sidebar-priv" id="privilege-toggle"></div>
@@ -604,7 +613,7 @@
         ST-läkare Kirurgkliniken Mora</p>
 
         <div class="section-header">Version</div>
-        <p>MoraDOPS 3.1.1</p>
+        <p>MoraDOPS v3.2.0</p>
       </div>
     </div>
 
@@ -1210,7 +1219,8 @@
         clinic: currentUser.clinic,
         registrar: `${currentUser.firstName} ${currentUser.lastName}`,
         category, recipient, formType,
-        section: a.section, question: a.question, answer: a.answer
+        section: a.section, question: a.question, answer: a.answer,
+        klinikId: currentUser.klinikId || ''
       }));
       if (!answerList.length) { alert('Inga svar att spara.'); return; }
       try {
@@ -1590,15 +1600,17 @@
 
     function openUserEdit(u) {
       document.getElementById('admin-edit-overlay').style.display = 'flex';
-      document.getElementById('edit-firstname').value = u.firstName;
-      document.getElementById('edit-lastname').value  = u.lastName;
-      document.getElementById('edit-jobrole').value   = u.jobRole;
-      document.getElementById('edit-userrole').value  = u.userRole;
-      document.getElementById('edit-clinic').value    = u.clinic;
-      document.getElementById('edit-klinikid').value  = u.klinikId || '';
+      document.getElementById('edit-firstname').value = u.firstName || '';
+      document.getElementById('edit-lastname').value  = u.lastName  || '';
+      document.getElementById('edit-clinic').value    = u.clinic    || '';
+      document.getElementById('edit-klinikid').value  = u.klinikId  || '';
       document.getElementById('edit-pin').value       = '';
-      document.getElementById('edit-email').value     = u.email;
+      document.getElementById('edit-email').value     = u.email     || '';
       document.getElementById('edit-status').textContent = '';
+      const jobRoleSel  = document.getElementById('edit-jobrole');
+      const userRoleSel = document.getElementById('edit-userrole');
+      if (jobRoleSel)  { jobRoleSel.value  = u.jobRole  || ''; }
+      if (userRoleSel) { userRoleSel.value = u.userRole || ''; }
       show('admin-edit-overlay', true);
     }
 
@@ -1900,13 +1912,19 @@
       const fullClinic = clinicVal === '__new__'
         ? (location ? `${location} - ${clinicNew}` : clinicNew)
         : clinicVal;
+      // Hitta klinikId från appData baserat på kliniknamn
+      let klinikId = '';
+      if (appData && appData.klinikIdMap) {
+        klinikId = appData.klinikIdMap[fullClinic] || '';
+      }
       const user = {
         firstName: document.getElementById('reg-firstname').value.trim(),
         lastName:  document.getElementById('reg-lastname').value.trim(),
         email:     document.getElementById('reg-email').value.trim(),
         pin, jobRole: document.getElementById('reg-jobrole').value,
         clinic: fullClinic,
-        userRole: document.getElementById('reg-userrole').value
+        userRole: document.getElementById('reg-userrole').value,
+        klinikId
       };
       if (!user.firstName || !user.lastName || !user.email || !user.pin ||
           !user.jobRole || !user.clinic || !user.userRole) {
@@ -1973,6 +1991,7 @@
         const btn = document.getElementById(`nav-btn-${p}`);
         if (btn) btn.classList.toggle('active', p === panel);
       });
+      closeMenu();
       closeMenu();
       if (panel === 'assessment')       { resetAssessment(); }
       if (panel === 'my-assessments')   { applyFilters(); }
