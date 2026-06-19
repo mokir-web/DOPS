@@ -950,8 +950,7 @@
       loadInboxBadge().then(() => {
         const hasUnread = (inboxData?.inbox || []).some(r => !r.read);
         if (hasUnread) showPanel('inbox');
-        else if (currentUser.userRole === 'Blandbild' || currentUser.userRole === 'Mottagare') showPanel('overview');
-        else showPanel(isReceiverOnly ? 'my-assessments' : 'assessment');
+        else showPanel('overview');
       });
     }
 
@@ -2426,6 +2425,7 @@
     function renderOverview(data) {
       const el = document.getElementById('overview-content');
       const userRole = currentUser.userRole;
+      let html = '';
       // totalMinutesSaved block
       if (data.totalMinutesSaved > 0 && (userRole === 'Registrerare' || userRole === 'Blandbild')) {
         const h = Math.floor(data.totalMinutesSaved / 60);
@@ -2438,8 +2438,6 @@
       }
       const showSent     = userRole === 'Registrerare' || userRole === 'Blandbild';
       const showReceived = userRole === 'Mottagare'    || userRole === 'Blandbild';
-      if (!html) html = '';
-
       function goalBar(count, goal) {
         if (!goal) return '';
         const pct = Math.min(100, Math.round(count / goal * 100));
