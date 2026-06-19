@@ -917,6 +917,8 @@
       prefillAssessment();
       prefillProfile();
       showPanel(isReceiverOnly ? 'my-assessments' : 'assessment');
+      // Ladda inkorg i bakgrunden direkt vid inloggning
+      loadInboxBadge();
     }
 
     function renderPrivilegeToggle() {
@@ -2156,18 +2158,28 @@
       renderInbox();
     }
 
+    async function loadInboxBadge() {
+      try {
+        inboxData = await api('getAssessmentRequests', { email: currentUser.email });
+        updateInboxBadge();
+      } catch(err) { console.error('Inkorg:', err); }
+    }
+
+    function updateInboxBadge() {
+      const unread = (inboxData?.inbox || []).filter(r => !r.read).length;
+      const badge = document.getElementById('inbox-badge');
+      if (badge) {
+        badge.textContent = unread;
+        badge.classList.toggle('hidden', unread === 0);
+      }
+    }
+
     async function loadInbox() {
       document.getElementById('inbox-list').innerHTML = '<p style="color:#888;">Hämtar...</p>';
       try {
         inboxData = await api('getAssessmentRequests', { email: currentUser.email });
         renderInbox();
-        // Uppdatera badge
-        const unread = (inboxData.inbox || []).filter(r => !r.read).length;
-        const badge = document.getElementById('inbox-badge');
-        if (badge) {
-          badge.textContent = unread;
-          badge.classList.toggle('hidden', unread === 0);
-        }
+        updateInboxBadge();
       } catch(err) {
         document.getElementById('inbox-list').innerHTML = '<p class="status-err">' + esc(err.message) + '</p>';
       }
@@ -2243,22 +2255,58 @@
     }
 
     function startRequestedAssessment(item) {
-      // Förifyll mottagare och gå till Registrera bedömning
+      // Markera förfrågan som utförd
+      api('markRequestDone', { id: item.id }).then(() => {
+        inboxData = null; // tvinga omladdning nästa gång
+        updateInboxBadge();
+      }).catch(() => {});
+
       showPanel('assessment');
       resetAssessment();
-      // Vänta på reset, sedan förifyll
       setTimeout(() => {
         const fromName = item.fromName;
-        // Sätt mottagare direkt i recipient-select
-        const sel = document.getElementById('recipient');
-        // Klona ett option
-        const opt = document.createElement('option');
-        opt.value = fromName; opt.textContent = fromName; opt.selected = true;
-        sel.appendChild(opt);
-        updateFormTypes();
-        updateTillBedomningBtn();
-        show('f3', true); show('f4', true); show('f5', true);
-        // Markera inte kategori – användaren väljer själv
+        // Förifyll och lås kategori (vi vet inte kategorin, men lås mottagaren)
+        // Hitta rätt kategori för avsändaren från appData
+        const clinic = currentUser.clinic;
+        let senderCategory = null;
+        if (appData && appData.lists) {
+          ['Spec','ST','AT','BT'].forEach(cat => {
+            const names = appData.lists[cat]?.[clinic] || [];
+            if (names.some(n => n.startsWith(fromName.split(' -- ')[0]))) senderCategory = cat;
+          });
+        }
+
+        // Sätt kategori om hittad
+        if (senderCategory) {
+          const catRadio = document.querySelector(`input[name="category"][value="${senderCategory}"]`);
+          if (catRadio) { catRadio.checked = true; catRadio.dispatchEvent(new Event('change')); }
+        }
+
+        // Vänta på att mottagarlistan fylls, sätt sedan mottagare
+        setTimeout(() => {
+          const sel = document.getElementById('recipient');
+          // Sök efter rätt alternativ
+          let found = false;
+          for (let opt of sel.options) {
+            if (opt.value.startsWith(fromName.split(' -- ')[0])) {
+              opt.selected = true; found = true; break;
+            }
+          }
+          if (!found) {
+            const opt = document.createElement('option');
+            const shortName = fromName.split(' -- ')[0];
+            opt.value = fromName; opt.textContent = shortName; opt.selected = true;
+            sel.appendChild(opt);
+          }
+          // Lås kategori och mottagare
+          document.querySelectorAll('input[name="category"]').forEach(r => r.disabled = true);
+          sel.disabled = true;
+          // Uppdatera formulärtypslista
+          updateFormTypes();
+          updateTillBedomningBtn();
+          show('f5', true);
+          show('f-till-bedomning', true);
+        }, 400);
       }, 300);
     }
 
@@ -2302,7 +2350,10 @@
       // Nollställ alltid när man går till Registrera bedömning
       savedAnswers = {};
       currentFormData = null;
-      document.querySelectorAll('input[name="category"]').forEach(r => r.checked = false);
+      // Lås upp eventuellt låsta fält
+      document.querySelectorAll('input[name="category"]').forEach(r => { r.checked = false; r.disabled = false; });
+      const recSel = document.getElementById('recipient');
+      if (recSel) recSel.disabled = false;
       document.querySelectorAll('input[name="formtype"]').forEach(r => r.checked = false);
       document.getElementById('recipient').innerHTML = '<option value="">-- Välj mottagare --</option>';
       document.getElementById('form-type-group').innerHTML = '';
