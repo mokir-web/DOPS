@@ -357,8 +357,7 @@
           <option value="Spec">Spec</option>
           <option value="AT">AT</option>
           <option value="BT">BT</option>
-          <option value="Admin">Admin (ej läkare)</option>
-          <option value="Admin">Admin (ej läkare)</option>
+          <option value="Admin">Administratör</option>
         </select>
       </div>
       <div class="field">
@@ -419,6 +418,9 @@
           <span class="sidebar-logo-text">MoraDOPS</span>
         </div>
         <div class="sidebar-nav">
+          <button class="sidebar-btn"        id="nav-btn-inbox"          onclick="showPanel('inbox')">
+            Förfrågningar <span id="inbox-badge" class="hidden" style="background:#9e2a18;color:#fff;border-radius:10px;padding:1px 7px;font-size:12px;margin-left:4px;"></span>
+          </button>
           <button class="sidebar-btn active" id="nav-btn-assessment"      onclick="showPanel('assessment')">Registrera bedömning</button>
           <button class="sidebar-btn"        id="nav-btn-my-assessments"  onclick="showPanel('my-assessments')">Mina bedömningar</button>
           <button class="sidebar-btn-secondary hidden" id="nav-btn-clinic-overview" onclick="showPanel('clinic-overview')">Kliniköversikt</button>
@@ -426,9 +428,7 @@
         </div>
         <div class="sidebar-nav-bottom">
           <div class="sidebar-divider" style="display:none;" id="priv-divider"></div>
-          <button class="sidebar-btn-secondary" id="nav-btn-inbox"     onclick="showPanel('inbox')">
-            Inkorg <span id="inbox-badge" class="hidden" style="background:#9e2a18;color:#fff;border-radius:10px;padding:1px 7px;font-size:12px;margin-left:4px;"></span>
-          </button>
+
           <button class="sidebar-btn-secondary" id="nav-btn-profile"    onclick="showPanel('profile')">Min profil</button>
           <div style="height:1px;background:#c4b8ac;margin:4px 0;"></div>
           <button class="sidebar-btn-secondary" id="nav-btn-statistics" onclick="showPanel('statistics')">Statistik</button>
@@ -689,7 +689,7 @@
           <div class="field"><label class="field-label">Förnamn</label><input type="text" id="edit-firstname"></div>
           <div class="field"><label class="field-label">Efternamn</label><input type="text" id="edit-lastname"></div>
           <div class="field"><label class="field-label">Yrkesroll</label>
-            <select id="edit-jobrole"><option value="ST">ST</option><option value="Spec">Spec</option><option value="AT">AT</option><option value="BT">BT</option><option value="Admin">Admin (ej läkare)</option></select>
+            <select id="edit-jobrole"><option value="ST">ST</option><option value="Spec">Spec</option><option value="AT">AT</option><option value="BT">BT</option><option value="Admin">Administratör</option></select>
           </div>
           <div class="field"><label class="field-label">Användarroll</label>
             <select id="edit-userrole"><option value="Registrerare">Registrerare</option><option value="Mottagare">Mottagare</option><option value="Blandbild">Blandbild</option></select>
@@ -727,9 +727,9 @@
 
     <!-- ── INBOX ────────────────────────────────────────────────── -->
     <div id="panel-inbox" class="hidden">
-      <h2>Inkorg</h2>
+      <h2>Förfrågningar</h2>
       <div style="display:flex;gap:10px;margin-bottom:16px;">
-        <button class="btn-primary"   id="inbox-tab-inbox"  onclick="setInboxTab('inbox')">Mottagna förfrågningar</button>
+        <button class="btn-primary"   id="inbox-tab-inbox"  onclick="setInboxTab('inbox')">Mottagna</button>
         <button class="btn-secondary" id="inbox-tab-outbox" onclick="setInboxTab('outbox')">Skickade</button>
         <button class="btn-secondary btn-small" onclick="showRequestForm()" style="margin-left:auto;">+ Begär bedömning</button>
       </div>
@@ -786,7 +786,7 @@
             <option value="Spec">Spec</option>
             <option value="AT">AT</option>
             <option value="BT">BT</option>
-            <option value="Admin">Admin (ej läkare)</option>
+            <option value="Admin">Administratör</option>
           </select>
         </div>
         <div class="field">
@@ -852,6 +852,7 @@
     let currentAssessments = [];
     let availableFormTypes = [];
     let activePrivilege = null; // null = standardvy, 'Studierektor', 'Administratör'
+    let pendingRequestId = null; // ID på förfrågan som initierat pågående bedömning
     let clinicAssessments = [];
 
     const hierarchy = ['Spec', 'ST', 'BT', 'AT'];
@@ -895,7 +896,10 @@
         try {
           appData = await api('getData');
           populateLocationDropdown();
-        } catch(err) { console.error(err); }
+        } catch(err) {
+          console.error(err);
+          document.getElementById('login-panel').classList.remove('hidden');
+        }
       }
     };
 
@@ -916,9 +920,12 @@
       if (assessmentBtn) assessmentBtn.classList.toggle('hidden', isReceiverOnly);
       prefillAssessment();
       prefillProfile();
-      showPanel(isReceiverOnly ? 'my-assessments' : 'assessment');
-      // Ladda inkorg i bakgrunden direkt vid inloggning
-      loadInboxBadge();
+      // Ladda inkorg direkt, landa där om olästa finns
+      loadInboxBadge().then(() => {
+        const hasUnread = (inboxData?.inbox || []).some(r => !r.read);
+        if (hasUnread) showPanel('inbox');
+        else showPanel(isReceiverOnly ? 'my-assessments' : 'assessment');
+      });
     }
 
     function renderPrivilegeToggle() {
@@ -972,6 +979,7 @@
       ['login-view','forgot-view','register-view'].forEach(v =>
         document.getElementById(v).classList.toggle('hidden', v !== `${view}-view`)
       );
+      if (view === 'register') populateLocationDropdown();
     }
 
     // ── Login ─────────────────────────────────────────────────────
@@ -1349,6 +1357,11 @@
         const status = document.getElementById('assessment-status');
         status.textContent = '✓ Bedömning sparad och skickad!';
         status.className = 'status-ok';
+        if (pendingRequestId) {
+          api('markRequestDone', { id: pendingRequestId }).then(() => {
+            pendingRequestId = null; inboxData = null; updateInboxBadge();
+          }).catch(() => {});
+        }
         setTimeout(() => { status.textContent = ''; }, 4000);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch(err) { setStatus('assessment-status', err.message, true); document.getElementById('submit-btn').disabled = false; }
@@ -2162,7 +2175,8 @@
       try {
         inboxData = await api('getAssessmentRequests', { email: currentUser.email });
         updateInboxBadge();
-      } catch(err) { console.error('Inkorg:', err); }
+      } catch(err) { console.error('Förfrågningar:', err); }
+      return inboxData;
     }
 
     function updateInboxBadge() {
@@ -2255,11 +2269,8 @@
     }
 
     function startRequestedAssessment(item) {
-      // Markera förfrågan som utförd
-      api('markRequestDone', { id: item.id }).then(() => {
-        inboxData = null; // tvinga omladdning nästa gång
-        updateInboxBadge();
-      }).catch(() => {});
+      // Spara request-ID, markera som utförd FÖRST när bedömning skickas
+      pendingRequestId = item.id;
 
       showPanel('assessment');
       resetAssessment();
@@ -2350,6 +2361,7 @@
       // Nollställ alltid när man går till Registrera bedömning
       savedAnswers = {};
       currentFormData = null;
+      pendingRequestId = null;
       // Lås upp eventuellt låsta fält
       document.querySelectorAll('input[name="category"]').forEach(r => { r.checked = false; r.disabled = false; });
       const recSel = document.getElementById('recipient');
