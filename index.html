@@ -1520,7 +1520,7 @@
           html += '<div style="font-size:14px;margin-top:4px;">Status: <strong>' + (data.info.aktiv === 'Ja' ? '✓ Aktiv' : '✗ Inaktiv') + '</strong></div>';
           const toggleLabel = data.info.aktiv === 'Ja' ? 'Stäng tillgång' : 'Aktivera';
           const toggleActive = data.info.aktiv !== 'Ja';
-          html += '<div class="btn-row" style="margin-top:12px;"><button class="btn-' + (toggleActive ? 'primary' : 'danger') + ' btn-small" onclick="toggleClinicAccess('' + klinikId + '',' + toggleActive + ')">' + toggleLabel + '</button></div>';
+          html += '<div class="btn-row" style="margin-top:12px;"><button class="btn-' + (toggleActive ? 'primary' : 'danger') + ' btn-small" onclick="toggleClinicAccess(\'' + klinikId + '\',' + toggleActive + ')">' + toggleLabel + '</button></div>';
           html += '</div>';
         } else {
           html = '<div class="assessment-card"><strong>' + (klinikId === '*' ? 'Alla kliniker' : klinikId) + '</strong></div>';
