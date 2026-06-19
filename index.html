@@ -427,7 +427,7 @@
           <button class="sidebar-btn-secondary" id="nav-btn-profile"    onclick="showPanel('profile')">Min profil</button>
           <div style="height:1px;background:#c4b8ac;margin:4px 0;"></div>
           <button class="sidebar-btn-secondary" id="nav-btn-statistics" onclick="showPanel('statistics')">Statistik</button>
-          <button class="sidebar-btn-secondary" id="nav-btn-documents"  onclick="showPanel('documents')">Dokument</button>
+          <button class="sidebar-btn-secondary hidden" id="nav-btn-documents"  onclick="showPanel('documents')">Dokument</button>
           <button class="sidebar-btn-secondary" id="nav-btn-about"      onclick="showPanel('about')">Om MoraDOPS</button>
         </div>
         <div class="sidebar-footer">
@@ -533,6 +533,12 @@
     <!-- ── STATISTICS ───────────────────────────────────────────── -->
     <div id="panel-statistics" class="hidden">
       <h2>Statistik</h2>
+      <div id="stat-klinik-row" class="hidden" style="margin-bottom:14px;">
+        <label class="field-label">Klinik</label>
+        <select id="stat-klinik-select" style="max-width:300px;" onchange="loadStatistics()">
+          <option value="*">Alla kliniker</option>
+        </select>
+      </div>
       <div class="filter-box" style="margin-bottom:20px;">
         <div class="date-grid">
           <div><label class="field-label">Från datum</label><input type="date" id="stat-date-from"></div>
@@ -607,6 +613,12 @@
     <!-- ── CLINIC OVERVIEW ──────────────────────────────────────── -->
     <div id="panel-clinic-overview" class="hidden">
       <h2>Kliniköversikt</h2>
+      <div id="co-klinik-row" class="hidden" style="margin-bottom:14px;">
+        <label class="field-label">Klinik</label>
+        <select id="co-klinik-select" style="max-width:300px;" onchange="loadClinicOverview()">
+          <option value="*">Alla kliniker</option>
+        </select>
+      </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
         <button class="btn-secondary btn-small" id="co-filter-toggle-btn" onclick="toggleCoFilter()" style="margin-left:auto;">⚙ Filtrera</button>
       </div>
@@ -823,9 +835,13 @@
       if (hbtn) hbtn.onclick = toggleMenu;
       renderPrivilegeToggle();
       updateSidebarPrivButtons(null);
+      // Dölj Registrera bedömning för rena mottagare
+      const isReceiverOnly = currentUser.userRole === 'Mottagare';
+      const assessmentBtn = document.getElementById('nav-btn-assessment');
+      if (assessmentBtn) assessmentBtn.classList.toggle('hidden', isReceiverOnly);
       prefillAssessment();
       prefillProfile();
-      showPanel('assessment');
+      showPanel(isReceiverOnly ? 'my-assessments' : 'assessment');
     }
 
     function renderPrivilegeToggle() {
@@ -862,10 +878,13 @@
     function updateSidebarPrivButtons(privilege) {
       const clinicBtn = document.getElementById('nav-btn-clinic-overview');
       const adminBtn  = document.getElementById('nav-btn-admin');
+      const docsBtn   = document.getElementById('nav-btn-documents');
       const divider   = document.getElementById('priv-divider');
       const hasPriv   = privilege === 'Studierektor' || privilege === 'Administratör';
+      const isAdmin   = privilege === 'Administratör';
       if (clinicBtn) clinicBtn.classList.toggle('hidden', !hasPriv);
-      if (adminBtn)  adminBtn.classList.toggle('hidden', privilege !== 'Administratör');
+      if (adminBtn)  adminBtn.classList.toggle('hidden', !isAdmin);
+      if (docsBtn)   docsBtn.classList.toggle('hidden', !isAdmin);
       if (divider)   divider.style.display = hasPriv ? 'block' : 'none';
     }
 
@@ -943,9 +962,8 @@
       });
       // Visa f4 och f5 direkt, men Till bedömning-knappen döljs till mottagare valts
       show('f4', true);
-      show('f5', true);
-      show('f-till-bedomning', true);
-      populateAllFormTypes();
+      show('f5', false);
+      show('f-till-bedomning', false);
       updateTillBedomningBtn();
     }
 
@@ -971,7 +989,7 @@
       const category = document.querySelector('input[name="category"]:checked')?.value;
       const sel = document.getElementById('recipient');
       sel.innerHTML = '<option value="">-- Välj mottagare --</option>';
-      show('f4', true); show('f5', true); show('f6-container', false); show('submit-btn', false);
+      show('f4', true); show('f5', !!category); show('f6-container', false); show('submit-btn', false);
       const group = document.getElementById('form-type-group');
       group.innerHTML = '';
       const checkedFormType = document.querySelector('input[name="formtype"]:checked')?.value;
@@ -1390,7 +1408,21 @@
     }
 
     async function loadClinicOverview() {
-      const klinikId = activeKlinikId || currentUser.klinikId || '*';
+      // Visa klinikväljare för global admin
+      const coKlinikRow = document.getElementById('co-klinik-row');
+      if (coKlinikRow && activePrivilege === 'Administratör' && activeKlinikId === '*') {
+        coKlinikRow.classList.remove('hidden');
+        const sel = document.getElementById('co-klinik-select');
+        if (sel && sel.options.length <= 1 && appData && appData.klinikIdMap) {
+          Object.entries(appData.klinikIdMap).forEach(([namn, kid]) => {
+            const opt = document.createElement('option'); opt.value = kid; opt.textContent = namn; sel.appendChild(opt);
+          });
+        }
+      } else if (coKlinikRow) { coKlinikRow.classList.add('hidden'); }
+      const selectedKlinik = document.getElementById('co-klinik-select')?.value;
+      const klinikId = (activePrivilege === 'Administratör' && activeKlinikId === '*')
+        ? (selectedKlinik || '*')
+        : (activeKlinikId || currentUser.klinikId || '*');
       const filters = {
         dateFrom:  document.getElementById('co-date-from')?.value || null,
         dateTo:    document.getElementById('co-date-to')?.value || null,
@@ -1710,7 +1742,9 @@
       const el = document.getElementById('statistics-content');
       el.innerHTML = '<p style="color:#888;">Hämtar data...</p>';
       try {
-        const stats = await api('getStatistics', { filters: { dateFrom, dateTo } });
+        const statKlinikId = document.getElementById('stat-klinik-select')?.value || activeKlinikId || currentUser.klinikId || '*';
+        const effectiveStatKlinik = (activePrivilege === 'Administratör' && activeKlinikId === '*') ? statKlinikId : (activeKlinikId || currentUser.klinikId || '*');
+        const stats = await api('getStatistics', { filters: { dateFrom, dateTo }, klinikId: effectiveStatKlinik });
 
         // Uppdatera formulärfilter-chips
         const filterContainer = document.getElementById('stat-formtype-filter');
@@ -1999,7 +2033,9 @@
     }
 
     function showSelectionFields() {
-      ['f-intro','f3','f4','f5'].forEach(id => show(id, true));
+      show('f-intro', true); show('f3', true); show('f4', true);
+      const hasCat = !!document.querySelector('input[name="category"]:checked');
+      show('f5', hasCat); show('f-till-bedomning', false);
       show('f-till-bedomning', true);
       show('f6-container', false);
       show('submit-btn', false);
@@ -2020,7 +2056,25 @@
       closeMenu();
       if (panel === 'assessment')       { resetAssessment(); }
       if (panel === 'my-assessments')   { applyFilters(); }
-      if (panel === 'statistics')       { loadStatistics(); }
+      if (panel === 'statistics') {
+        // Visa klinikväljare för global admin
+        const statKlinikRow = document.getElementById('stat-klinik-row');
+        if (statKlinikRow && activePrivilege === 'Administratör' && activeKlinikId === '*') {
+          statKlinikRow.classList.remove('hidden');
+          // Fyll på kliniker om tomma
+          const sel = document.getElementById('stat-klinik-select');
+          if (sel && sel.options.length <= 1 && appData && appData.klinikIdMap) {
+            Object.entries(appData.klinikIdMap).forEach(([namn, kid]) => {
+              const opt = document.createElement('option');
+              opt.value = kid; opt.textContent = namn;
+              sel.appendChild(opt);
+            });
+          }
+        } else if (statKlinikRow) {
+          statKlinikRow.classList.add('hidden');
+        }
+        loadStatistics();
+      }
       if (panel === 'clinic-overview')  { loadClinicOverview(); }
       if (panel === 'admin')            { loadAdminPanel(); }
       if (panel === 'documents')        { loadDocuments(); }
