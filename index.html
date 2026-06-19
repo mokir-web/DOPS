@@ -726,60 +726,86 @@
 
     <div id="panel-profile" class="hidden">
       <h2>Min profil</h2>
+      <div style="max-width:560px;">
 
-      <div style="padding:14px; background:#f8f9fa; border-radius:6px; font-size:14px; margin-bottom:20px;">
-        <div><strong>Namn:</strong> <span id="profile-name"></span></div>
-        <div style="margin-top:6px;"><strong>E-post:</strong> <span id="profile-email"></span></div>
-        <div style="margin-top:6px;"><strong>Klinik:</strong> <span id="profile-clinic"></span></div>
-      </div>
+        <!-- Personuppgifter -->
+        <div class="section-header">Personuppgifter</div>
+        <div class="field">
+          <label class="field-label">Förnamn</label>
+          <input type="text" id="profile-firstname">
+        </div>
+        <div class="field">
+          <label class="field-label">Efternamn</label>
+          <input type="text" id="profile-lastname">
+        </div>
+        <div class="field">
+          <label class="field-label">E-postadress</label>
+          <input type="email" id="profile-email-input">
+        </div>
+        <div class="field">
+          <label class="field-label">Klinik</label>
+          <input type="text" id="profile-clinic-input">
+        </div>
 
-      <h3 style="color:#3d5c4a; border-bottom:2px solid #d8cfc5; padding-bottom:6px;">Ändra roller</h3>
-      <div class="field">
-        <label class="field-label">Yrkesroll</label>
-        <select id="profile-jobrole">
-          <option value="ST">ST</option>
-          <option value="Spec">Spec</option>
-          <option value="AT">AT</option>
-          <option value="BT">BT</option>
-        </select>
-      </div>
-      <div class="field">
-        <label class="field-label">Användarroll</label>
-        <select id="profile-userrole">
-          <option value="Registrerare">Registrerare</option>
-          <option value="Mottagare">Mottagare</option>
-          <option value="Blandbild">Blandbild</option>
-        </select>
-      </div>
-      <div class="btn-row">
-        <button class="btn-primary" onclick="saveProfile()">Spara roller</button>
-      </div>
-      <div id="profile-role-status"></div>
+        <!-- Roller -->
+        <div class="section-header" style="margin-top:24px;">Roller</div>
+        <div class="field">
+          <label class="field-label">Yrkesroll</label>
+          <select id="profile-jobrole">
+            <option value="ST">ST</option>
+            <option value="Spec">Spec</option>
+            <option value="AT">AT</option>
+            <option value="BT">BT</option>
+            <option value="Admin">Admin (ej läkare)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Användarroll</label>
+          <select id="profile-userrole">
+            <option value="Registrerare">Registrerare</option>
+            <option value="Mottagare">Mottagare</option>
+            <option value="Blandbild">Blandbild</option>
+          </select>
+        </div>
 
-      <hr>
+        <!-- Aviseringar -->
+        <div class="section-header" style="margin-top:24px;">Aviseringar</div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:12px;cursor:pointer;font-size:18px;">
+            <input type="checkbox" id="profile-email-notify" style="width:22px;height:22px;accent-color:#3d5c4a;">
+            Skicka e-post när jag tar emot en bedömning
+          </label>
+        </div>
 
-      <h3 style="color:#3d5c4a; border-bottom:2px solid #d8cfc5; padding-bottom:6px;">Ändra PIN</h3>
-      <div class="field">
-        <label class="field-label">Nuvarande PIN</label>
-        <input type="password" id="profile-current-pin" maxlength="6">
-      </div>
-      <div class="field">
-        <label class="field-label">Ny PIN (4–6 siffror)</label>
-        <input type="password" id="profile-new-pin" maxlength="6">
-      </div>
-      <div class="btn-row">
-        <button class="btn-primary" onclick="changePin()">Byt PIN</button>
-      </div>
-      <div id="profile-pin-status"></div>
+        <!-- PIN -->
+        <div class="section-header" style="margin-top:24px;">Byt PIN</div>
+        <div class="field">
+          <label class="field-label">Nuvarande PIN</label>
+          <input type="password" id="profile-current-pin" maxlength="6">
+        </div>
+        <div class="field">
+          <label class="field-label">Ny PIN (4–6 siffror)</label>
+          <input type="password" id="profile-new-pin" maxlength="6">
+        </div>
 
-      <hr>
+        <!-- Spara/avbryt -->
+        <div class="btn-row" style="margin-top:28px;">
+          <button class="btn-primary" onclick="saveProfile()">Spara ändringar</button>
+          <button class="btn-secondary" onclick="prefillProfile()">Avbryt</button>
+        </div>
+        <div id="profile-role-status"></div>
+        <div id="profile-pin-status"></div>
 
-      <h3 style="color:#9e2a18; border-bottom:2px solid rgba(176,48,32,0.2); padding-bottom:6px;">Radera profil</h3>
-      <p style="color:#6b5c52; font-size:15px;">Raderar ditt konto och all din data permanent. Bedömningar du registrerat finns kvar.</p>
-      <div class="btn-row">
-        <button class="btn-danger" onclick="confirmDeleteProfile()">Radera min profil</button>
+        <hr style="margin-top:32px;">
+
+        <!-- Radera -->
+        <h3 style="color:#9e2a18;border-bottom:2px solid rgba(176,48,32,0.2);padding-bottom:6px;">Radera profil</h3>
+        <p style="color:#6b5c52;font-size:15px;">Raderar ditt konto permanent. Bedömningar du registrerat finns kvar.</p>
+        <div class="btn-row">
+          <button class="btn-danger" onclick="confirmDeleteProfile()">Radera min profil</button>
+        </div>
+        <div id="profile-delete-status"></div>
       </div>
-      <div id="profile-delete-status"></div>
     </div>
 
       </div><!-- /main-content -->
@@ -1921,24 +1947,69 @@
 
     // ── Profile ───────────────────────────────────────────────────
     function prefillProfile() {
-      document.getElementById('profile-name').textContent   = `${currentUser.firstName} ${currentUser.lastName}`;
-      document.getElementById('profile-email').textContent  = currentUser.email;
-      document.getElementById('profile-clinic').textContent = currentUser.clinic;
-      document.getElementById('profile-jobrole').value      = currentUser.jobRole;
-      document.getElementById('profile-userrole').value     = currentUser.userRole;
+      const s = id => document.getElementById(id);
+      if (s('profile-firstname'))    s('profile-firstname').value    = currentUser.firstName  || '';
+      if (s('profile-lastname'))     s('profile-lastname').value     = currentUser.lastName   || '';
+      if (s('profile-email-input'))  s('profile-email-input').value  = currentUser.email      || '';
+      if (s('profile-clinic-input')) s('profile-clinic-input').value = currentUser.clinic     || '';
+      if (s('profile-jobrole'))      s('profile-jobrole').value      = currentUser.jobRole    || '';
+      if (s('profile-userrole'))     s('profile-userrole').value     = currentUser.userRole   || '';
+      if (s('profile-email-notify')) s('profile-email-notify').checked = currentUser.emailNotify === true || currentUser.emailNotify === 'Ja';
+      if (s('profile-current-pin'))  s('profile-current-pin').value  = '';
+      if (s('profile-new-pin'))      s('profile-new-pin').value      = '';
+      const statusEls = ['profile-role-status','profile-pin-status'];
+      statusEls.forEach(id => { if (s(id)) s(id).textContent = ''; });
     }
 
     async function saveProfile() {
-      const jobRole  = document.getElementById('profile-jobrole').value;
-      const userRole = document.getElementById('profile-userrole').value;
+      const s = id => document.getElementById(id);
+      const firstName   = (s('profile-firstname')?.value    || '').trim();
+      const lastName    = (s('profile-lastname')?.value     || '').trim();
+      const newEmail    = (s('profile-email-input')?.value  || '').trim().toLowerCase();
+      const clinic      = (s('profile-clinic-input')?.value || '').trim();
+      const jobRole     = s('profile-jobrole')?.value  || '';
+      const userRole    = s('profile-userrole')?.value || '';
+      const emailNotify = s('profile-email-notify')?.checked ? 'Ja' : 'Nej';
+      const currentPin  = (s('profile-current-pin')?.value || '').trim();
+      const newPin      = (s('profile-new-pin')?.value     || '').trim();
+
+      if (!firstName || !lastName) { setStatus('profile-role-status', 'Namn får inte vara tomt.', true); return; }
+
+      setStatus('profile-role-status', '⏳ Sparar...', false);
+
       try {
-        const result = await api('updateProfile', { email: currentUser.email, jobRole, userRole });
+        // Verifiera PIN om byte önskas
+        if (newPin) {
+          if (!/^\d{4,6}$/.test(newPin)) { setStatus('profile-pin-status', 'Ny PIN måste vara 4–6 siffror.', true); return; }
+          if (!currentPin) { setStatus('profile-pin-status', 'Ange nuvarande PIN för att byta.', true); return; }
+          const check = await api('login', { email: currentUser.email, pin: currentPin });
+          if (!check || check.locked || check.failed) { setStatus('profile-pin-status', 'Nuvarande PIN är felaktig.', true); return; }
+        }
+
+        const result = await api('updateProfile', {
+          email: currentUser.email,
+          updates: { firstName, lastName, newEmail, clinic, jobRole, userRole, emailNotify,
+            ...(newPin ? { newPin } : {}) }
+        });
         if (result.error) { setStatus('profile-role-status', result.error, true); return; }
-        currentUser.jobRole  = result.jobRole;
-        currentUser.userRole = result.userRole;
+
+        // Uppdatera currentUser
+        currentUser.firstName   = firstName;
+        currentUser.lastName    = lastName;
+        currentUser.email       = newEmail || currentUser.email;
+        currentUser.clinic      = clinic;
+        currentUser.jobRole     = jobRole;
+        currentUser.userRole    = userRole;
+        currentUser.emailNotify = emailNotify === 'Ja';
         localStorage.setItem('dops_user', JSON.stringify(currentUser));
+
+        // Uppdatera nav
+        const fullName = `${firstName} ${lastName}`;
+        document.getElementById('nav-user').textContent  = fullName;
+        document.getElementById('nav-clinic').textContent = clinic;
         prefillAssessment();
-        setStatus('profile-role-status', '✓ Roller uppdaterade!', false);
+        setStatus('profile-role-status', '✓ Profil sparad!', false);
+        if (newPin) setStatus('profile-pin-status', '✓ PIN ändrad!', false);
       } catch(err) { setStatus('profile-role-status', err.message, true); }
     }
 
@@ -1959,22 +2030,7 @@
       } catch(err) { setStatus('profile-delete-status', err.message, true); }
     }
 
-    async function changePin() {
-      const currentPin = document.getElementById('profile-current-pin').value.trim();
-      const newPin     = document.getElementById('profile-new-pin').value.trim();
-      if (!currentPin || !newPin) { setStatus('profile-pin-status', 'Fyll i båda fälten.', true); return; }
-      if (!/^\d{4,6}$/.test(newPin)) { setStatus('profile-pin-status', 'Ny PIN måste vara 4–6 siffror.', true); return; }
-      setStatus('profile-pin-status', '⏳ Byter PIN...', false);
-      try {
-        const user = await api('login', { email: currentUser.email, pin: currentPin });
-        if (!user) { setStatus('profile-pin-status', 'Nuvarande PIN är felaktig.', true); return; }
-        const result = await api('resetPin', { email: currentUser.email, code: 'BYPASS', newPin });
-        if (result.error) { setStatus('profile-pin-status', result.error, true); return; }
-        setStatus('profile-pin-status', '✓ PIN ändrad!', false);
-        document.getElementById('profile-current-pin').value = '';
-        document.getElementById('profile-new-pin').value = '';
-      } catch(err) { setStatus('profile-pin-status', err.message, true); }
-    }
+
 
     // ── Registration ──────────────────────────────────────────────
     function populateLocationDropdown() {
