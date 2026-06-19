@@ -120,6 +120,69 @@
     }
     #login-panel h2 { text-align: center; }
 
+    /* Enhetlig display-fält (klinik, registrerare) */
+    .display-field {
+      width: 100%; max-width: 560px; padding: 11px 10px; font-size: 18px;
+      border: 1.5px solid #c4b8ac; border-radius: 5px;
+      background: #f5f1ec; color: #6b5c52;
+      font-style: italic;
+    }
+
+    /* Nav-knappar: alla lika, aktiv får accentfärg */
+    .nav-btn {
+      padding: 13px 22px; font-size: 18px;
+      background: #ddd5ca; color: #1e1612;
+      border: 1.5px solid #c4b8ac; border-radius: 5px; cursor: pointer;
+      min-height: 48px; font-weight: normal;
+    }
+    .nav-btn:hover { background: #cfc5b8; }
+    .nav-btn.active {
+      background: #3d5c4a; color: #f0ede8;
+      border-color: #3d5c4a; font-weight: bold;
+    }
+
+    /* Frågegrupp-avstånd */
+    .field { margin-top: 28px; }
+    .field + .field { margin-top: 24px; }
+
+    /* Radio/checkbox accent – använd palett-färg istället för system-blå */
+    input[type=radio], input[type=checkbox] { accent-color: #3d5c4a; }
+
+    /* Disabled radio-label */
+    .radio-group label.disabled-option {
+      opacity: 0.45; cursor: not-allowed;
+    }
+    .radio-group label.disabled-option::after {
+      content: " (ej tillgänglig)";
+      font-size: 14px; color: #9e8e82; font-style: italic;
+    }
+
+    /* Logga ut – tonas ned */
+    button.btn-danger {
+      padding: 11px 16px; font-size: 16px;
+      background: transparent; color: #9e8e82;
+      border: 1.5px solid #c4b8ac; border-radius: 5px; cursor: pointer;
+      min-height: 48px;
+    }
+    button.btn-danger:hover { background: rgba(176,48,32,0.10); color: #9e2a18; border-color: rgba(176,48,32,0.35); }
+
+    /* Sektionsavgränsare luftigare */
+    .section-header {
+      background: #d8cfc5; padding: 10px 14px;
+      border-radius: 5px; margin-top: 36px; margin-bottom: 4px;
+      font-weight: bold; color: #2a1f18; font-size: 17px;
+      border-left: 4px solid #3d5c4a;
+    }
+
+    /* Mobil logo med text */
+    .nav-mobile-logo-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .nav-mobile-logo-text {
+      font-family: Arial, sans-serif; font-size: 11px; font-weight: 700;
+      color: #2a1f18; letter-spacing: 0.5px;
+    }
+
     /* ── Mobile overrides (max 600px = phone) ── */
     @media (max-width: 600px) {
       body {
@@ -315,9 +378,9 @@
       </div>
       <!-- Desktop knappar -->
       <div class="nav-desktop-btns">
-        <button class="btn-primary"   onclick="showPanel('assessment')">Registrera bedömning</button>
-        <button class="btn-secondary" onclick="showPanel('my-assessments')">Mina bedömningar</button>
-        <button class="btn-secondary" onclick="showPanel('profile')">Min profil</button>
+        <button class="nav-btn active" id="nav-btn-assessment"     onclick="showPanel('assessment')">Registrera bedömning</button>
+        <button class="nav-btn"        id="nav-btn-my-assessments" onclick="showPanel('my-assessments')">Mina bedömningar</button>
+        <button class="nav-btn"        id="nav-btn-profile"        onclick="showPanel('profile')">Min profil</button>
       </div>
       <!-- Desktop: användare + logga ut -->
       <div class="nav-right">
@@ -334,19 +397,22 @@
           <span id="nav-user-mob" style="font-weight:bold;"></span>
           <span id="nav-clinic-mob" style="font-size:13px; color:#6b5c52;"></span>
         </div>
-        <svg width="36" height="36" viewBox="0 0 44 44" style="overflow:visible;flex-shrink:0;">
-          <circle cx="22" cy="22" r="17" fill="none" stroke="#2a1f18" stroke-width="2"/>
-          <text x="22" y="27" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#2a1f18" text-anchor="middle">MD</text>
-          <circle cx="35" cy="35" r="8" fill="#4a9e62"/>
-          <polyline points="30,35 33,38 40,31" fill="none" stroke="#f0ede8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <div class="nav-mobile-logo-wrap">
+          <svg width="34" height="34" viewBox="0 0 44 44" style="overflow:visible;flex-shrink:0;">
+            <circle cx="22" cy="22" r="17" fill="none" stroke="#2a1f18" stroke-width="2"/>
+            <text x="22" y="27" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#2a1f18" text-anchor="middle">MD</text>
+            <circle cx="35" cy="35" r="8" fill="#4a9e62"/>
+            <polyline points="30,35 33,38 40,31" fill="none" stroke="#f0ede8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="nav-mobile-logo-text">MoraDOPS</span>
+        </div>
       </div>
       <!-- Mobil dropdown -->
       <div class="nav-menu" id="nav-menu">
-        <button class="btn-primary"   onclick="showPanel('assessment'); closeMenu()">Registrera bedömning</button>
-        <button class="btn-secondary" onclick="showPanel('my-assessments'); closeMenu()">Mina bedömningar</button>
-        <button class="btn-secondary" onclick="showPanel('profile'); closeMenu()">Min profil</button>
-        <button class="btn-danger"    onclick="doLogout(); closeMenu()">Logga ut</button>
+        <button class="nav-btn active" id="nav-mob-btn-assessment"     onclick="showPanel('assessment'); closeMenu()">Registrera bedömning</button>
+        <button class="nav-btn"        id="nav-mob-btn-my-assessments" onclick="showPanel('my-assessments'); closeMenu()">Mina bedömningar</button>
+        <button class="nav-btn"        id="nav-mob-btn-profile"        onclick="showPanel('profile'); closeMenu()">Min profil</button>
+        <button class="btn-danger"     onclick="doLogout(); closeMenu()">Logga ut</button>
       </div>
     </div>
 
@@ -358,12 +424,12 @@
 
       <div class="field" id="f1">
         <label class="field-label">1. Klinik</label>
-        <div id="clinic-display" style="padding:8px; background:#f8f9fa; border-radius:4px; font-size:14px;"></div>
+        <div id="clinic-display" class="display-field"></div>
       </div>
 
       <div class="field" id="f2">
         <label class="field-label">2. Registrerare</label>
-        <div id="registrar-display" style="padding:8px; background:#f8f9fa; border-radius:4px; font-size:14px;"></div>
+        <div id="registrar-display" class="display-field"></div>
       </div>
 
       <div class="field" id="f3">
@@ -632,8 +698,10 @@
       const userIdx = hierarchy.indexOf(currentUser.jobRole);
       document.querySelectorAll('input[name="category"]').forEach(radio => {
         const catIdx = hierarchy.indexOf(radio.value);
-        radio.disabled = userIdx === -1 || catIdx < userIdx;
-        radio.closest('label').style.opacity = radio.disabled ? '0.4' : '1';
+        const isDisabled = userIdx === -1 || catIdx < userIdx;
+        radio.disabled = isDisabled;
+        radio.closest('label').classList.toggle('disabled-option', isDisabled);
+        radio.closest('label').style.opacity = '';
       });
       // Show f4 (empty) and f5 with all form types visible from start
       show('f4', true);
@@ -690,6 +758,8 @@
     async function loadForm(formName) {
       savedAnswers = {};
       document.getElementById('form-questions').innerHTML = '<p style="color:#888">Laddar frågor...</p>';
+      const submitBtn = document.getElementById('submit-btn');
+      if (submitBtn) submitBtn.disabled = false;
       show('f6-container', true); show('submit-btn', false);
       ['f-intro','f1','f2','f3','f4','f5'].forEach(id => show(id, false));
       try {
@@ -903,6 +973,8 @@
         document.getElementById('recipient').innerHTML = '<option value="">-- Välj mottagare --</option>';
         document.getElementById('form-type-group').innerHTML = '';
         document.getElementById('form-questions').innerHTML = '';
+        const submitBtn = document.getElementById('submit-btn');
+        if (submitBtn) { submitBtn.disabled = false; }
         show('f4', false); show('f5', false); show('f6-container', false); show('submit-btn', false);
         showSelectionFields();
         const status = document.getElementById('assessment-status');
@@ -1179,6 +1251,13 @@
       ['assessment','my-assessments','profile'].forEach(p =>
         show(`panel-${p}`, p === panel)
       );
+      // Uppdatera aktiv nav-knapp desktop + mobil
+      ['assessment','my-assessments','profile'].forEach(p => {
+        const btn    = document.getElementById(`nav-btn-${p}`);
+        const mobBtn = document.getElementById(`nav-mob-btn-${p}`);
+        if (btn)    btn.classList.toggle('active', p === panel);
+        if (mobBtn) mobBtn.classList.toggle('active', p === panel);
+      });
       if (panel === 'assessment') {
         const formOpen = !document.getElementById('f6-container').classList.contains('hidden');
         if (!formOpen) showSelectionFields();
