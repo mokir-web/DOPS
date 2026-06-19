@@ -851,7 +851,8 @@
 
     function setPrivilege(privilege, klinikId) {
       activePrivilege = privilege;
-      activeKlinikId = klinikId || null;
+      // null = Mitt konto, '*' = global admin, 'mora-kirurgi' = specifik klinik
+      activeKlinikId = privilege ? (klinikId || currentUser.klinikId || null) : null;
       renderPrivilegeToggle();
       closeMenu();
       updateSidebarPrivButtons(privilege);
@@ -1380,9 +1381,7 @@
     }
 
     async function loadClinicOverview() {
-      const klinikId = activeKlinikId && activeKlinikId !== '*'
-        ? activeKlinikId
-        : (activePrivilege === 'Administratör' && activeKlinikId === '*' ? '*' : (currentUser.klinikId || '*'));
+      const klinikId = activeKlinikId || currentUser.klinikId || '*';
       const filters = {
         dateFrom:  document.getElementById('co-date-from')?.value || null,
         dateTo:    document.getElementById('co-date-to')?.value || null,
@@ -1517,19 +1516,18 @@
       const el = document.getElementById('admin-clinic-list');
       el.innerHTML = '<p style="color:#888;">Hämtar kliniker...</p>';
       try {
-        const result = await api('getAllUsers', { klinikId: activeKlinikId || '*' });
+        const result = await api('getAllUsers', { klinikId: (activeKlinikId === '*' ? '*' : (activeKlinikId || currentUser.klinikId || '*')) });
         const allUsers = result || [];
         // Filtrera användare baserat på klinikId-behörighet
-        allAdminUsers = activeKlinikId === '*'
-          ? allUsers
-          : allUsers.filter(u => u.klinikId === activeKlinikId);
-        const klinikIds = activeKlinikId === '*'
+        allAdminUsers = allUsers; // redan filtrerat på server
+        const effKlinik = activeKlinikId || currentUser.klinikId;
+        const klinikIds = effKlinik === '*'
           ? [...new Set(allUsers.map(u => u.klinikId).filter(Boolean))]
-          : [activeKlinikId];
+          : [...new Set([effKlinik].filter(Boolean))];
         if (!klinikIds.length) { el.innerHTML = '<p style="color:#888;">Inga kliniker.</p>'; return; }
         el.innerHTML = '';
         // Lägg till "Alla"-knapp bara för global admin (*)
-        if (activeKlinikId === '*') {
+        if (activeKlinikId === '*' || !activeKlinikId && !currentUser.klinikId) {
           const allBtn = document.createElement('div');
           allBtn.className = 'assessment-card';
           allBtn.style.cssText = 'cursor:pointer;';
