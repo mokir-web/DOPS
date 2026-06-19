@@ -397,6 +397,7 @@
   <!-- ═══ APP ══════════════════════════════════════════════════════ -->
 
   <div id="app" class="hidden">
+    <div id="app-loading" style="position:fixed;inset:0;background:#e6e0d8;z-index:500;display:flex;align-items:center;justify-content:center;"><div style="color:#6b5c52;font-size:16px;">Laddar...</div></div>
 
     <!-- Mobil hamburger (utanför sidebar) -->
     <button class="hamburger" id="hamburger-btn" aria-label="Meny">☰</button>
@@ -984,6 +985,7 @@
       updateSidebarPrivButtons(privilege);
       if (privilege === 'Administratör') showPanel('admin');
       else if (privilege === 'Studierektor') showPanel('clinic-overview');
+      else if (privilege === null) { /* Mitt konto – navigera inte, bootApp hanterar landning */ }
       else showPanel('assessment');
     }
 
@@ -2562,6 +2564,9 @@
     let activeKlinikId = null;
 
     function showPanel(panel) {
+      // Ta bort loading-overlay vid första showPanel
+      const loadingEl = document.getElementById('app-loading');
+      if (loadingEl) loadingEl.remove();
       ['assessment','my-assessments','overview','confirmation','clinic-overview','admin','statistics','documents','about','inbox','profile'].forEach(p =>
         show(`panel-${p}`, p === panel)
       );
