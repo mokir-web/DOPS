@@ -55,7 +55,7 @@
     .sidebar-btn.active { background: #3d5c4a; color: #f0ede8; border-left-color: #2a4234; font-weight: bold; }
     .sidebar-btn.hidden { display: none; }
     .sidebar-footer { padding: 14px 16px; border-top: 1.5px solid #c4b8ac; margin-top: auto; }
-    .sidebar-version { font-size: 11px; color: #9e8e82; padding: 0 0 8px 18px; }
+    .sidebar-version { font-size: 11px; color: #9e8e82; padding: 0 18px 8px 18px; display: block; }
     .sidebar-nav-secondary { border-top: 1px solid #c4b8ac; padding: 6px 0; margin-top: auto; }
     .sidebar-btn-secondary { display: block; width: 100%; text-align: left; padding: 8px 18px; font-size: 14px; background: none; border: none; border-left: 3px solid transparent; cursor: pointer; color: #6b5c52; font-family: Arial,sans-serif; }
     .sidebar-btn-secondary:hover { background: #cfc5b8; color: #2a1f18; }
@@ -267,8 +267,8 @@
       .nav { gap: 6px; border-bottom: none; padding-bottom: 8px; flex-wrap: wrap; }
       #nav-user { font-size: 15px; }
       .date-grid { grid-template-columns: 1fr; }
-      .panel-split { flex-direction: column; }
-      .panel-sidebar-right { width: 100%; }
+      .panel-split { flex-direction: column-reverse; }
+      .panel-sidebar-right { width: 100%; order: -1; }
       #login-panel { margin: 16px auto; padding: 16px; border: none; border-radius: 0; }
       .assessment-card { padding: 12px; }
       .assessment-card h4 { font-size: 16px; }
@@ -285,7 +285,7 @@
 
   <!-- ═══ LOGIN ════════════════════════════════════════════════════ -->
 
-  <div id="login-panel">
+  <div id="login-panel" class="hidden">
     <div style="display:flex; flex-direction:column; align-items:center; gap:14px; margin-bottom:24px;">
       <div style="display:flex;align-items:center;gap:10px;">
         <svg width="42" height="42" viewBox="0 0 44 44" style="overflow:visible;">
@@ -426,17 +426,19 @@
         <div class="sidebar-nav">
           <button class="sidebar-btn active" id="nav-btn-assessment"      onclick="showPanel('assessment')">Registrera bedömning</button>
           <button class="sidebar-btn"        id="nav-btn-my-assessments"  onclick="showPanel('my-assessments')">Mina bedömningar</button>
-          <button class="sidebar-btn hidden" id="nav-btn-clinic-overview" onclick="showPanel('clinic-overview')">Kliniköversikt</button>
-          <button class="sidebar-btn hidden" id="nav-btn-admin"           onclick="showPanel('admin')">Administration</button>
-          <button class="sidebar-btn"        id="nav-btn-profile"         onclick="showPanel('profile')">Min profil</button>
+          <button class="sidebar-btn-secondary hidden" id="nav-btn-clinic-overview" onclick="showPanel('clinic-overview')">Kliniköversikt</button>
+          <button class="sidebar-btn-secondary hidden" id="nav-btn-admin"           onclick="showPanel('admin')">Administration</button>
         </div>
         <div class="sidebar-nav-bottom">
-          <button class="sidebar-btn" id="nav-btn-statistics" onclick="showPanel('statistics')" style="font-size:14px;">Statistik</button>
-          <button class="sidebar-btn" id="nav-btn-documents"  onclick="showPanel('documents')"  style="font-size:14px;">Dokument</button>
-          <button class="sidebar-btn" id="nav-btn-about"      onclick="showPanel('about')"      style="font-size:14px;">Om MoraDOPS</button>
+          <div class="sidebar-divider" style="display:none;" id="priv-divider"></div>
+          <button class="sidebar-btn-secondary" id="nav-btn-profile"    onclick="showPanel('profile')">Min profil</button>
+          <div style="height:1px;background:#c4b8ac;margin:4px 0;"></div>
+          <button class="sidebar-btn-secondary" id="nav-btn-statistics" onclick="showPanel('statistics')">Statistik</button>
+          <button class="sidebar-btn-secondary" id="nav-btn-documents"  onclick="showPanel('documents')">Dokument</button>
+          <button class="sidebar-btn-secondary" id="nav-btn-about"      onclick="showPanel('about')">Om MoraDOPS</button>
         </div>
         <div class="sidebar-footer">
-          <div class="sidebar-version">v3.2.0</div>
+          <div class="sidebar-version">v3.3.0</div>
           <div class="sidebar-user" id="nav-user"></div>
           <div class="sidebar-clinic" id="nav-clinic"></div>
           <div class="sidebar-priv" id="privilege-toggle"></div>
@@ -453,12 +455,12 @@
       <h2>Bedömning</h2>
       <p id="f-intro" style="color:#666; font-size:13px;">Frågor som inte anses relevanta kan med fördel lämnas obesvarade.</p>
 
-      <div class="field" id="f1">
+      <div class="field" id="f1" style="display:none;">
         <label class="field-label">1. Klinik</label>
         <div id="clinic-display" class="display-field"></div>
       </div>
 
-      <div class="field" id="f2">
+      <div class="field" id="f2" style="display:none;">
         <label class="field-label">2. Registrerare</label>
         <div id="registrar-display" class="display-field"></div>
       </div>
@@ -616,7 +618,7 @@
         ST-läkare Kirurgkliniken Mora</p>
 
         <div class="section-header">Version</div>
-        <p>MoraDOPS v3.2.0</p>
+        <p>MoraDOPS v3.3.0</p>
       </div>
     </div>
 
@@ -805,18 +807,23 @@
     // ── Boot ─────────────────────────────────────────────────────
     window.onload = async function() {
       const saved = localStorage.getItem('dops_user');
-      try {
-        appData = await api('getData');
-        populateLocationDropdown();
-        if (saved) {
-          currentUser = JSON.parse(saved);
-          bootApp();
-        } else {
-          document.getElementById('login-panel').classList.remove('hidden');
-        }
-      } catch(err) {
+      if (saved) {
+        // Visa app direkt utan att vänta på getData
+        currentUser = JSON.parse(saved);
+        bootApp();
+        // Ladda data i bakgrunden
+        try {
+          appData = await api('getData');
+          populateLocationDropdown();
+          prefillAssessment(); // Uppdatera med färsk data
+        } catch(err) { console.error('getData failed:', err); }
+      } else {
+        // Ingen sparad user – ladda data och visa login
         document.getElementById('login-panel').classList.remove('hidden');
-        console.error(err);
+        try {
+          appData = await api('getData');
+          populateLocationDropdown();
+        } catch(err) { console.error(err); }
       }
     };
 
@@ -869,12 +876,11 @@
     function updateSidebarPrivButtons(privilege) {
       const clinicBtn = document.getElementById('nav-btn-clinic-overview');
       const adminBtn  = document.getElementById('nav-btn-admin');
-      const divider   = document.querySelector('.sidebar-divider');
+      const divider   = document.getElementById('priv-divider');
       const hasPriv   = privilege === 'Studierektor' || privilege === 'Administratör';
-      if (clinicBtn) clinicBtn.classList.toggle('hidden', privilege !== 'Studierektor' && privilege !== 'Administratör');
+      if (clinicBtn) clinicBtn.classList.toggle('hidden', !hasPriv);
       if (adminBtn)  adminBtn.classList.toggle('hidden', privilege !== 'Administratör');
-      // Visa/dölj avdelaren beroende på om privilegier finns
-      if (divider) divider.style.display = hasPriv ? 'block' : 'none';
+      if (divider)   divider.style.display = hasPriv ? 'block' : 'none';
     }
 
     // ── Login views ───────────────────────────────────────────────
@@ -1736,17 +1742,7 @@
           pointRadius: 4,
         }));
 
-        // Total-linje
-        lineDatasets.unshift({
-          label: 'Totalt',
-          data: months.map(m => Object.entries(m).filter(([k]) => k !== 'label').reduce((s,[,v]) => s + (typeof v === 'number' ? v : 0), 0)),
-          borderColor: '#2a1f18',
-          backgroundColor: '#2a1f1822',
-          tension: 0.3,
-          fill: false,
-          borderWidth: 2.5,
-          pointRadius: 5,
-        });
+        // Total-linje borttagen per användarönskemål
 
         if (lineChart) lineChart.destroy();
         const lineCtx = document.getElementById('chart-line').getContext('2d');
@@ -1985,7 +1981,7 @@
     }
 
     function showSelectionFields() {
-      ['f-intro','f1','f2','f3','f4','f5'].forEach(id => show(id, true));
+      ['f-intro','f3','f4','f5'].forEach(id => show(id, true));
       show('f-till-bedomning', true);
       show('f6-container', false);
       show('submit-btn', false);
