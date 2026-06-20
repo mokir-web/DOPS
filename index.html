@@ -63,7 +63,7 @@
     .sidebar-user { font-size: 14px; font-weight: bold; color: #2a1f18; }
     .sidebar-clinic { font-size: 12px; color: #6b5c52; margin-top: 2px; }
     .sidebar-priv { margin-top: 8px; }
-    .sidebar-logout { margin-top: 10px; width: 100%; padding: 8px 12px; font-size: 14px; background: rgba(176,48,32,0.08); color: #9e2a18; border: 1.5px solid rgba(176,48,32,0.25); border-radius: 5px; cursor: pointer; text-align: left; }
+    .sidebar-logout { width: 100%; padding: 8px 12px; font-size: 14px; background: rgba(176,48,32,0.08); color: #9e2a18; border: 1.5px solid rgba(176,48,32,0.25); border-radius: 5px; cursor: pointer; text-align: left; box-sizing: border-box; }
     .sidebar-logout:hover { background: rgba(176,48,32,0.18); border-color: rgba(176,48,32,0.45); }
     .main-content { flex: 1; padding: 28px 36px; max-width: 900px; min-width: 0; }
     .nav button { flex-shrink: 0; }
@@ -465,9 +465,9 @@
           <div id="privilege-inline" class="hidden" style="background:#ede8e2;border:1.5px solid #c4b8ac;border-top:none;border-radius:0 0 6px 6px;margin-bottom:8px;overflow:hidden;">
           </div>
           <div class="sidebar-priv hidden" id="privilege-toggle"></div>
-          <div style="display:flex;gap:6px;">
-            <button onclick="clearCache()" style="flex:1;background:transparent;border:1.5px solid #c4b8ac;border-radius:6px;padding:10px 4px;cursor:pointer;font-size:13px;color:#6b5c52;box-sizing:border-box;">Rensa cache</button>
-            <button class="sidebar-logout" onclick="doLogout()" style="flex:1;padding:10px 4px;box-sizing:border-box;">Logga ut</button>
+          <div style="display:flex;gap:6px;align-items:stretch;">
+            <button onclick="clearCache()" style="flex:1;background:transparent;border:1.5px solid #c4b8ac;border-radius:6px;padding:10px 4px;cursor:pointer;font-size:13px;color:#6b5c52;box-sizing:border-box;line-height:1.2;">Rensa cache</button>
+            <button class="sidebar-logout" onclick="doLogout()" style="flex:1;padding:10px 4px;box-sizing:border-box;line-height:1.2;margin:0;">Logga ut</button>
           </div>
         </div>
       </div>
@@ -1877,10 +1877,20 @@
         const allUsers = result || [];
         // Filtrera användare baserat på klinikId-behörighet
         allAdminUsers = allUsers; // redan filtrerat på server
+        // Bygg lista av kliniker admin har tillgång till
         const effKlinik = activeKlinikId || currentUser.klinikId;
-        const klinikIds = effKlinik === '*'
-          ? [...new Set(allUsers.map(u => u.klinikId).filter(Boolean))]
-          : [...new Set([effKlinik].filter(Boolean))];
+        let klinikIds;
+        if (effKlinik === '*') {
+          // Global admin: alla kliniker som finns i användardata
+          klinikIds = [...new Set(allUsers.map(u => u.klinikId).filter(Boolean))];
+        } else {
+          // Lokal admin: alla kliniker från privilegier
+          const privKliniker = (currentUser.privileges || [])
+            .filter(p => p.privilege === 'Administratör' || p.privilege === 'Studierektor')
+            .map(p => p.klinikId)
+            .filter(Boolean);
+          klinikIds = [...new Set([...privKliniker, effKlinik].filter(Boolean))];
+        }
         if (!klinikIds.length) { el.innerHTML = '<p style="color:#888;">Inga kliniker.</p>'; return; }
         el.innerHTML = '';
         // Lägg till "Alla"-knapp bara för global admin (*)
@@ -1892,12 +1902,20 @@
           allBtn.onclick = () => loadClinicDetail('*');
           el.appendChild(allBtn);
         }
-        klinikIds.forEach(kid => {
+        // Bygg klinikId → namn-mappning från appData
+        const kidToName = {};
+        if (appData && appData.klinikIdMap) {
+          Object.entries(appData.klinikIdMap).forEach(([namn, kid]) => { kidToName[kid] = namn; });
+        }
+        klinikIds.sort().forEach(kid => {
           const users = allAdminUsers.filter(u => u.klinikId === kid);
+          const displayName = kidToName[kid] || kid || '(okänd)';
           const card = document.createElement('div');
           card.className = 'assessment-card';
           card.style.cssText = 'cursor:pointer; margin-top:10px;';
-          card.innerHTML = '<strong style="font-size:17px;">' + (kid || '(okänd)') + '</strong><div style="font-size:14px;color:#6b5c52;margin-top:3px;">' + users.length + ' användare</div>';
+          card.innerHTML = '<strong style="font-size:17px;">' + esc(displayName) + '</strong>'
+            + '<div style="font-size:13px;color:#9e8e82;margin-top:2px;">' + kid + '</div>'
+            + '<div style="font-size:14px;color:#6b5c52;margin-top:3px;">' + users.length + ' användare</div>';
           card.onclick = () => loadClinicDetail(kid);
           el.appendChild(card);
         });
