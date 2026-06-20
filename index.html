@@ -532,7 +532,6 @@
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
         <button class="btn-primary"   id="tab-received" onclick="setAssessmentTab('received')">Mottagna</button>
         <button class="btn-secondary" id="tab-sent"     onclick="setAssessmentTab('sent')">Skickade</button>
-        <button class="btn-secondary btn-small" id="filter-toggle-btn" onclick="toggleAssessmentFilter()" style="margin-left:auto;">⚙ Filtrera</button>
       </div>
       <!-- Kollapsbart filter -->
       <div id="assessment-filter-panel" class="hidden filter-box" style="margin-bottom:14px;">
@@ -549,13 +548,14 @@
           <button class="btn-secondary" onclick="resetFilters()">Återställ</button>
         </div>
       </div>
-      <!-- Export-rad: visas när bedömningar är markerade -->
-      <div id="assessment-actions" class="hidden" style="margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <!-- Export/filter-rad -->
+      <div id="assessment-actions" style="margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <label style="font-size:13px;cursor:pointer;">
           <input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)"> Markera alla
         </label>
         <button class="btn-primary btn-small" onclick="exportSelected()">📄 Exportera</button>
         <span id="selected-count" style="font-size:13px;color:#6b5c52;"></span>
+        <button class="btn-secondary btn-small" id="filter-toggle-btn" onclick="toggleAssessmentFilter()" style="margin-left:auto;">⚙ Filtrera</button>
       </div>
       <div id="my-assessments-list"></div>
       <div id="export-status" style="margin-top:12px;"></div>
@@ -780,6 +780,13 @@
         </div>
         <div id="request-status"></div>
       </div>
+      <!-- E-postavisering förfrågningar -->
+      <div style="margin-top:16px;padding:12px 16px;background:#f5f1ec;border-radius:6px;border:1px solid #d8cfc5;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:15px;">
+          <input type="checkbox" id="inbox-email-notify" checked style="width:18px;height:18px;accent-color:#3d5c4a;" onchange="saveInboxEmailNotify()">
+          Skicka e-post när jag får en ny förfrågan
+        </label>
+      </div>
       <div id="inbox-list"></div>
     </div>
 
@@ -805,7 +812,9 @@
         </div>
         <div class="field">
           <label class="field-label">Klinik</label>
-          <input type="text" id="profile-clinic-input">
+          <select id="profile-clinic-input" onchange="updateProfileClinicId()">
+            <option value="">-- Välj klinik --</option>
+          </select>
         </div>
 
         <!-- Roller -->
@@ -2106,6 +2115,8 @@
       const lastName    = (s('profile-lastname')?.value     || '').trim();
       const newEmail    = (s('profile-email-input')?.value  || '').trim().toLowerCase();
       const clinic      = (s('profile-clinic-input')?.value || '').trim();
+      // Hitta klinikId från valt kliniknamn
+      const newKlinikId = (appData && appData.klinikIdMap && clinic) ? (appData.klinikIdMap[clinic] || currentUser.klinikId) : currentUser.klinikId;
       const jobRole     = s('profile-jobrole')?.value  || '';
       const userRole    = s('profile-userrole')?.value || '';
       const emailNotify = s('profile-email-notify')?.checked ? 'Ja' : 'Nej';
@@ -2127,7 +2138,7 @@
 
         const result = await api('updateProfile', {
           email: currentUser.email,
-          updates: { firstName, lastName, newEmail, clinic, jobRole, userRole, emailNotify,
+          updates: { firstName, lastName, newEmail, clinic, klinikId: newKlinikId, jobRole, userRole, emailNotify,
             ...(newPin ? { newPin } : {}) }
         });
         if (result.error) { setStatus('profile-role-status', result.error, true); return; }
@@ -2137,6 +2148,7 @@
         currentUser.lastName    = lastName;
         currentUser.email       = newEmail || currentUser.email;
         currentUser.clinic      = clinic;
+        if (newKlinikId) currentUser.klinikId = newKlinikId;
         currentUser.jobRole     = jobRole;
         currentUser.userRole    = userRole;
         currentUser.emailNotify = emailNotify === 'Ja';
@@ -2278,6 +2290,9 @@
     }
 
     async function loadInbox() {
+      // Synka e-postavisering
+      const notifyChk = document.getElementById('inbox-email-notify');
+      if (notifyChk) notifyChk.checked = currentUser.emailNotify !== false;
       document.getElementById('inbox-list').innerHTML = '<p style="color:#888;">Hämtar...</p>';
       try {
         inboxData = await api('getAssessmentRequests', { email: currentUser.email });
@@ -2574,6 +2589,25 @@
       } else if (activeKlinikId) {
         sel.innerHTML = `<option value="${activeKlinikId}" selected>${activeKlinikId}</option>`;
       }
+    }
+
+    function updateProfileClinicId() {
+      // Synka klinikId när klinik byts i profilen
+      const sel = document.getElementById('profile-clinic-input');
+      if (!sel || !appData || !appData.klinikIdMap) return;
+      // klinikId uppdateras vid saveProfile via backend
+    }
+
+    function saveInboxEmailNotify() {
+      const checked = document.getElementById('inbox-email-notify')?.checked;
+      const notify = checked ? 'Ja' : 'Nej';
+      api('updateProfile', {
+        email: currentUser.email,
+        updates: { emailNotify: notify }
+      }).then(() => {
+        currentUser.emailNotify = checked;
+        localStorage.setItem('dops_user', JSON.stringify(currentUser));
+      }).catch(err => console.error('emailNotify:', err));
     }
 
     function toggleMenu() {
