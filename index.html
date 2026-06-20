@@ -1508,23 +1508,22 @@
         show('f4', false); show('f5', false); show('f6-container', false); show('submit-btn', false);
         showSelectionFields();
         const status = document.getElementById('assessment-status');
-        // Hantera pending request
-        // Markera förfrågan som utförd – via ID om känd, annars via deltagare
+        // Markera förfrågan som utförd
+        const afterMark = () => {
+          pendingRequestId = null; pendingRequestFrom = null; pendingRequestFormType = null;
+          window._pendingAssessmentMeta = null;
+          inboxData = null; loadInboxBadge();
+        };
         if (pendingRequestId) {
-          api('markRequestDone', { id: pendingRequestId }).then(() => {
-            pendingRequestId = null; pendingRequestFrom = null; pendingRequestFormType = null; window._pendingAssessmentMeta = null; inboxData = null; updateInboxBadge();
-          }).catch(() => {});
+          api('markRequestDone', { id: pendingRequestId }).then(afterMark).catch(() => {});
         } else {
-          // Försök matcha utan känt ID (t.ex. om användaren navigerat bort och tillbaka)
-          const recip = document.getElementById('recipient')?.value || '';
-          const recipEmail = recip ? null : null; // hämtas nedan
+          // Direkt-läge: matcha via mottagarens email
+          const recip = (window._pendingAssessmentMeta?.recipient) || document.getElementById('recipient')?.value || '';
           if (recip) {
             api('getRecipientEmail', { recipientFullName: recip }).then(toEmail => {
               if (toEmail) {
-                api('markRequestDoneByParticipants', {
-                  fromEmail: currentUser.email,
-                  toEmail
-                }).then(() => { inboxData = null; updateInboxBadge(); }).catch(() => {});
+                api('markRequestDoneByParticipants', { fromEmail: currentUser.email, toEmail })
+                  .then(afterMark).catch(() => {});
               }
             }).catch(() => {});
           }
@@ -2442,10 +2441,12 @@
         card.style.marginTop = '12px';
         if (currentInboxTab === 'inbox' && !item.read) card.style.borderLeft = '4px solid #3d5c4a';
         const isInbox = currentInboxTab === 'inbox';
+        const personName = isInbox ? item.fromName : item.toName;
         card.innerHTML =
-          '<div style="font-weight:bold;font-size:16px;">' + esc(isInbox ? item.fromName : item.toName) + '</div>' +
+          '<div style="font-weight:bold;font-size:16px;">' + esc(personName) + '</div>' +
+          (item.formType ? '<div style="font-size:13px;color:#3d5c4a;font-weight:bold;margin-top:2px;">📋 ' + esc(item.formType) + '</div>' : '') +
           '<div style="font-size:13px;color:#6b5c52;margin-top:2px;">' + esc(item.timestamp) + '</div>' +
-          '<div style="margin-top:8px;font-size:16px;">' + esc(item.message) + '</div>';
+          '<div style="margin-top:8px;font-size:15px;">' + esc(item.message) + '</div>';
         if (isInbox) {
           const btn = document.createElement('button');
           btn.className = 'btn-primary btn-small';
@@ -2580,37 +2581,36 @@
     }
 
     async function startRequestedAssessmentDirect(item) {
-      // Hoppa direkt till formuläret – fyll i dold metadata
-      showPanel('assessment');
-      resetAssessment();
-
-      // Sätt dold mottagardata för submit
-      window._pendingAssessmentMeta = {
-        recipient: item.fromName,
-        formType:  item.formType,
-        category:  null // sätts nedan
-      };
-
-      // Hitta kategori
-      const fromName = item.fromName;
+      // Hitta kategori för avsändaren
+      const fromName = item.fromName.split(' -- ')[0].trim();
       const clinic = currentUser.clinic;
       let senderCategory = 'ST';
       if (appData && appData.lists) {
         ['Spec','ST','AT','BT'].forEach(cat => {
           const names = appData.lists[cat]?.[clinic] || [];
-          if (names.some(n => n.split(' -- ')[0].trim() === fromName.split(' -- ')[0].trim())) senderCategory = cat;
+          if (names.some(n => n.split(' -- ')[0].trim() === fromName)) senderCategory = cat;
         });
       }
-      window._pendingAssessmentMeta.category = senderCategory;
 
-      // Dölj val-sidan, ladda formuläret direkt
+      // Sätt metadata INNAN resetAssessment
+      window._pendingAssessmentMeta = {
+        recipient: item.fromName,
+        formType:  item.formType,
+        category:  senderCategory
+      };
+
+      // Visa assessment-panelen och nollställ
+      showPanel('assessment');
+      // Dölj alla val-fält
       ['f-intro','f1','f2','f3','f4','f5','f-till-bedomning'].forEach(id => show(id, false));
       show('f6-container', true);
+      document.getElementById('form-questions').innerHTML = '<p style="color:#888">Laddar frågor...</p>';
+      window._formStartTime = new Date().toISOString();
 
       try {
         const data = await api('getFormQuestions', { formName: item.formType });
         if (!data || !data.length) {
-          alert('Inga frågor hittades för ' + item.formType);
+          alert('Inga frågor hittades för: ' + item.formType);
           showPanel('inbox'); return;
         }
         renderForm(data);
