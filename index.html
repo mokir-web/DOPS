@@ -466,8 +466,8 @@
           </div>
           <div class="sidebar-priv hidden" id="privilege-toggle"></div>
           <div style="display:flex;gap:6px;">
-            <button onclick="clearCache()" style="flex:1;background:transparent;border:1px solid #c4b8ac;border-radius:6px;padding:8px 4px;cursor:pointer;font-size:13px;color:#6b5c52;">Rensa cache</button>
-            <button class="sidebar-logout" onclick="doLogout()" style="flex:1;">Logga ut</button>
+            <button onclick="clearCache()" style="flex:1;background:transparent;border:1.5px solid #c4b8ac;border-radius:6px;padding:10px 4px;cursor:pointer;font-size:13px;color:#6b5c52;box-sizing:border-box;">Rensa cache</button>
+            <button class="sidebar-logout" onclick="doLogout()" style="flex:1;padding:10px 4px;box-sizing:border-box;">Logga ut</button>
           </div>
         </div>
       </div>
@@ -2546,10 +2546,6 @@
     }
 
     function startRequestedAssessment(item) {
-      pendingRequestId = item.id;
-      pendingRequestFrom = item.fromName;
-      pendingRequestFormType = item.formType || '';
-
       // Om formulärtyp är känd: hoppa direkt till formuläret
       if (item.formType) {
         startRequestedAssessmentDirect(item);
@@ -2559,6 +2555,10 @@
       // Annars: visa val-sidan med förifylld mottagare
       showPanel('assessment');
       resetAssessment();
+      // Sätt EFTER resetAssessment så de inte nollställs
+      pendingRequestId = item.id;
+      pendingRequestFrom = item.fromName;
+      pendingRequestFormType = item.formType || '';
       setTimeout(() => {
         const fromName = item.fromName;
         const clinic = currentUser.clinic;
@@ -2594,6 +2594,11 @@
     }
 
     async function startRequestedAssessmentDirect(item) {
+      // Sätt pending-state DIREKT (resetAssessment anropas inte här)
+      pendingRequestId       = item.id;
+      pendingRequestFrom     = item.fromName;
+      pendingRequestFormType = item.formType || '';
+
       // Hitta kategori för avsändaren
       const fromName = item.fromName.split(' -- ')[0].trim();
       const clinic = currentUser.clinic;
@@ -3106,10 +3111,9 @@
     }
 
     function resetAssessment() {
-      // Nollställ alltid när man går till Registrera bedömning
+      // Nollställ formulärdata – pending-state sätts separat av startRequestedAssessment
       savedAnswers = {};
       currentFormData = null;
-      pendingRequestId = null;
       // Lås upp eventuellt låsta fält
       document.querySelectorAll('input[name="category"]').forEach(r => { r.checked = false; r.disabled = false; });
       const recSel = document.getElementById('recipient');
