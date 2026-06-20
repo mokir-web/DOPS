@@ -433,13 +433,16 @@
 
           <button class="sidebar-btn-secondary" id="nav-btn-profile"    onclick="showPanel('profile')">Min profil</button>
           <div style="height:1px;background:#c4b8ac;margin:4px 0;"></div>
-          <button class="sidebar-btn-secondary" id="nav-btn-statistics" onclick="showPanel('statistics')">Statistik</button>
+          <button class="sidebar-btn-secondary" id="nav-btn-statistics" onclick="showPanel('statistics')">Klinikens statistik</button>
           <button class="sidebar-btn-secondary hidden" id="nav-btn-documents"  onclick="showPanel('documents')">Dokument</button>
           <button class="sidebar-btn-secondary" id="nav-btn-about"      onclick="showPanel('about')">Om MoraDOPS</button>
         </div>
         <div class="sidebar-footer">
-          <div class="sidebar-user" id="nav-user"></div>
-          <div class="sidebar-clinic" id="nav-clinic"></div>
+          <button id="sidebar-user-btn" onclick="togglePrivilegeFromUserBtn()" style="width:100%;text-align:left;background:#ede8e2;border:1.5px solid #c4b8ac;border-radius:6px;padding:8px 12px;cursor:pointer;margin-bottom:8px;box-sizing:border-box;">
+            <div id="nav-user" style="font-weight:bold;font-size:14px;"></div>
+            <div id="nav-clinic" style="font-size:12px;color:#6b5c52;"></div>
+            <div id="nav-role-label" style="font-size:12px;color:#3d5c4a;font-weight:bold;margin-top:1px;"></div>
+          </button>
           <div class="sidebar-priv" id="privilege-toggle"></div>
           <button class="sidebar-logout" onclick="doLogout()">Logga ut</button>
         </div>
@@ -546,19 +549,20 @@
         </div>
       </div>
       <!-- Export-rad -->
-      <div id="assessment-actions" class="hidden" style="margin-bottom:10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <div id="assessment-actions" class="hidden" style="margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <label style="font-size:13px;cursor:pointer;">
           <input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)"> Markera alla
         </label>
-        <button class="btn-primary btn-small" onclick="exportSelected()">📄 Exportera markerade</button>
+        <button class="btn-primary btn-small" onclick="exportSelected()">📄 Exportera</button>
         <span id="selected-count" style="font-size:13px;color:#6b5c52;"></span>
+        <button class="btn-secondary btn-small" id="filter-toggle-btn" onclick="toggleAssessmentFilter()" style="margin-left:auto;">⚙ Filtrera</button>
       </div>
       <div id="my-assessments-list"></div>
       <div id="export-status" style="margin-top:12px;"></div>
     </div>
     <!-- ── STATISTICS ───────────────────────────────────────────── -->
     <div id="panel-statistics" class="hidden">
-      <h2>Statistik</h2>
+      <h2>Klinikens statistik</h2>
       <div id="stat-klinik-row" class="hidden" style="margin-bottom:14px;">
         <label class="field-label">Klinik</label>
         <select id="stat-klinik-select" style="max-width:300px;" onchange="loadStatistics()">
@@ -632,7 +636,7 @@
         ST-läkare Kirurgkliniken Mora</p>
 
         <div class="section-header">Version</div>
-        <p>MoraDOPS v3.3.0</p>
+        <p>MoraDOPS v3.4.0</p>
       </div>
     </div>
 
@@ -732,7 +736,7 @@
             </div>
             <div>
               <label class="field-label" style="font-size:14px;">KlinikID</label>
-              <input type="text" id="edit-priv-klinik" placeholder="mora-kirurgi eller *" style="max-width:180px;font-size:15px;padding:6px;" onfocus="prefillPrivKlinik()">
+              <select id="edit-priv-klinik" style="font-size:15px;padding:6px;" onmousedown="populatePrivKlinikSelect()"><option value="">-- Välj --</option></select>
             </div>
             <button class="btn-primary btn-small" onclick="addPrivilegeToUser()">Lägg till</button>
           </div>
@@ -768,7 +772,7 @@
         </div>
         <div class="field">
           <label class="field-label">Meddelande</label>
-          <textarea id="request-message" placeholder="T.ex. Tacksam DOPS på appendektomin i fredags..." style="max-width:560px;"></textarea>
+          <textarea id="request-message" placeholder="Beskriv vad du vill ha bedömt..." style="max-width:560px;"></textarea>
         </div>
         <div class="btn-row">
           <button class="btn-primary" onclick="sendRequest()">Skicka förfrågan</button>
@@ -990,16 +994,24 @@
     }
 
     function updateSidebarPrivButtons(privilege) {
-      const clinicBtn = document.getElementById('nav-btn-clinic-overview');
-      const adminBtn  = document.getElementById('nav-btn-admin');
-      const docsBtn   = document.getElementById('nav-btn-documents');
-      const divider   = document.getElementById('priv-divider');
-      const hasPriv   = privilege === 'Studierektor' || privilege === 'Administratör';
-      const isAdmin   = privilege === 'Administratör';
+      const clinicBtn   = document.getElementById('nav-btn-clinic-overview');
+      const adminBtn    = document.getElementById('nav-btn-admin');
+      const docsBtn     = document.getElementById('nav-btn-documents');
+      const divider     = document.getElementById('priv-divider');
+      const roleLabel   = document.getElementById('nav-role-label');
+      const hasPriv     = privilege === 'Studierektor' || privilege === 'Administratör';
+      const isAdmin     = privilege === 'Administratör';
       if (clinicBtn) clinicBtn.classList.toggle('hidden', !hasPriv);
       if (adminBtn)  adminBtn.classList.toggle('hidden', !isAdmin);
       if (docsBtn)   docsBtn.classList.toggle('hidden', !isAdmin);
       if (divider)   divider.style.display = hasPriv ? 'block' : 'none';
+      if (roleLabel) {
+        const privs = currentUser.privileges || [];
+        if (privilege === 'Administratör') roleLabel.textContent = 'Administratör';
+        else if (privilege === 'Studierektor') roleLabel.textContent = 'Studierektor';
+        else if (privs.length) roleLabel.textContent = currentUser.jobRole || '';
+        else roleLabel.textContent = currentUser.jobRole || '';
+      }
     }
 
     // ── Login views ───────────────────────────────────────────────
@@ -1018,6 +1030,10 @@
       try {
         const result = await api('login', { email: email.trim().toLowerCase(), pin: pin.trim() });
         if (!result) { setStatus('login-status', 'Felaktig e-post eller PIN.', true); return; }
+        if (result.error === 'inactive_clinic') {
+          setStatus('login-status', 'Din klinik har inget aktivt abonnemang. Kontakta lokal administratör.', true);
+          return;
+        }
         if (result.locked) {
           setStatus('login-status', `Kontot är tillfälligt låst. Försök igen om ${result.minutesLeft} minut${result.minutesLeft !== 1 ? 'er' : ''}.`, true);
           return;
@@ -1160,6 +1176,7 @@
 
     async function loadForm(formName) {
       savedAnswers = {};
+      window._formStartTime = new Date().toISOString();
       document.getElementById('form-questions').innerHTML = '<p style="color:#888">Laddar frågor...</p>';
       const submitBtn = document.getElementById('submit-btn');
       if (submitBtn) submitBtn.disabled = false;
@@ -1369,7 +1386,7 @@
         const recipientEmail = await api('getRecipientEmail', { recipientFullName: recipient });
         const recipientName  = recipient.split(' -- ')[0];
         const registrarName  = `${currentUser.firstName} ${currentUser.lastName}`;
-        await api('saveAnswers', { answerList, recipientEmail, recipientName, registrarName, formType });
+        const result = await api('saveAnswers', { answerList, recipientEmail, recipientName, registrarName, formType, startTime: window._formStartTime || null });
         // Återställ och gå tillbaka till startvyn
         savedAnswers = {};
         currentFormData = null;
@@ -1396,12 +1413,15 @@
           formType + ' · Mottagare: ' + recipientShortName;
 
         // Tidsbesparing
-        const savedMins = (appData && appData.timeSavings && appData.timeSavings[formType]) || 0;
+        const paperMins = (appData && appData.timeSavings && appData.timeSavings[formType]) || 0;
+        const savedMins = (result.netMinutesSaved !== undefined && result.netMinutesSaved !== null)
+          ? result.netMinutesSaved
+          : paperMins;
         const confirmTimeEl = document.getElementById('confirm-time-saving');
-        if (savedMins > 0 && confirmTimeEl) {
+        if (savedMins > 0 && paperMins > 0 && confirmTimeEl) {
           confirmTimeEl.classList.remove('hidden');
           document.getElementById('confirm-time-this').textContent =
-            savedMins + ' minuter sparade denna gång';
+            savedMins + ' minuter sparade jämfört med pappersregistrering';
           api('getMyOverview', { email: currentUser.email }).then(ov => {
             const tot = (ov.totalMinutesSaved || 0) + savedMins;
             const h = Math.floor(tot / 60);
@@ -2248,11 +2268,11 @@
     }
 
     function updateInboxBadge() {
-      const unread = (inboxData?.inbox || []).filter(r => !r.read).length;
+      const total = (inboxData?.inbox || []).length; // visa så länge det finns förfrågningar
       const badge = document.getElementById('inbox-badge');
       if (badge) {
-        badge.textContent = unread;
-        badge.classList.toggle('hidden', unread === 0);
+        badge.textContent = total;
+        badge.classList.toggle('hidden', total === 0);
       }
     }
 
@@ -2298,19 +2318,34 @@
 
     function showRequestForm() {
       show('request-form', true);
-      // Fyll kollegor från appData
       const sel = document.getElementById('request-to');
       sel.innerHTML = '<option value="">-- Välj kollega --</option>';
       if (appData && appData.lists) {
         const clinic = currentUser.clinic;
+        const myName = (currentUser.firstName + ' ' + currentUser.lastName).trim();
         const allNames = new Set();
+        // Hämta från alla kategorier och Registrerare/Mottagare
         ['Registrerare','Mottagare','ST','Spec','AT','BT'].forEach(cat => {
           const names = appData.lists[cat]?.[clinic] || [];
-          names.forEach(n => { if (n !== currentUser.firstName + ' ' + currentUser.lastName) allNames.add(n); });
+          names.forEach(n => {
+            const shortName = n.split(' -- ')[0].trim();
+            if (shortName && shortName !== myName) allNames.add(n);
+          });
         });
+        if (allNames.size === 0) {
+          // Fallback: försök utan klinikfilter
+          ['Registrerare','Mottagare','ST','Spec','AT','BT'].forEach(cat => {
+            const byClinic = appData.lists[cat] || {};
+            Object.values(byClinic).flat().forEach(n => {
+              const shortName = n.split(' -- ')[0].trim();
+              if (shortName && shortName !== myName) allNames.add(n);
+            });
+          });
+        }
         [...allNames].sort().forEach(name => {
           const opt = document.createElement('option');
-          opt.value = name; opt.textContent = name;
+          opt.value = name;
+          opt.textContent = name.split(' -- ')[0].trim();
           sel.appendChild(opt);
         });
       }
@@ -2453,31 +2488,28 @@
       function renderFormGroup(title, forms, subGoals) {
         if (!Object.keys(forms).length) return '';
         let s = `<div class="section-header" style="margin-top:24px;">${title}</div>`;
-        s += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:14px;">';
-        Object.entries(forms).sort((a,b) => a[0].localeCompare(b[0])).forEach(([ft, v]) => {
+        s += '<div style="background:#f5f1ec;border:1.5px solid #d8cfc5;border-radius:8px;padding:14px;margin-top:14px;max-width:600px;">';
+        Object.entries(forms).sort((a,b) => a[0].localeCompare(b[0])).forEach(([ft, v], idx, arr) => {
           const isDOPS = ft === 'DOPS' || ft === 'Operationsspecifik DOPS';
           const color  = v.goal ? (v.count >= v.goal ? '#4a9e62' : v.count > 0 ? '#c8a96e' : '#9e2a18') : '#3d5c4a';
-          s += `<div style="background:#f5f1ec;border:1.5px solid #d8cfc5;border-radius:8px;padding:14px;border-left:4px solid ${color};">`;
-          s += `<div style="font-weight:bold;font-size:16px;">${esc(ft)}</div>`;
-          s += `<div style="font-size:22px;font-weight:bold;color:${color};margin-top:4px;">${v.count}</div>`;
-          s += goalBar(v.count, v.goal);
-
+          if (idx > 0) s += '<div style="height:1px;background:#d8cfc5;margin:10px 0;"></div>';
+          s += '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">';
+          s += `<div style="font-size:15px;font-weight:bold;min-width:140px;">${esc(ft)}</div>`;
+          s += '<div style="flex:1;">' + goalBar(v.count, v.goal) + '</div>';
+          s += `<div style="font-size:18px;font-weight:bold;color:${color};min-width:32px;text-align:right;">${v.count}</div>`;
+          s += '</div>';
           // Subingrepp för DOPS
           if (isDOPS && Object.keys(v.subCounts).length) {
-            s += '<div style="margin-top:10px;border-top:1px solid #d8cfc5;padding-top:8px;">';
-            s += '<div style="font-size:13px;color:#6b5c52;margin-bottom:6px;">Per ingrepp:</div>';
             Object.entries(v.subCounts).sort((a,b) => b[1]-a[1]).forEach(([ingrepp, cnt]) => {
               const subKey = 'DOPS:' + ingrepp;
               const subGoal = subGoals && subGoals[subKey] ? subGoals[subKey] : 0;
               const subColor = subGoal ? (cnt >= subGoal ? '#4a9e62' : cnt > 0 ? '#c8a96e' : '#9e2a18') : '#6b5c52';
-              s += `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;font-size:14px;">
+              s += `<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0 2px 16px;font-size:13px;color:#6b5c52;">
                 <span>${esc(ingrepp)}</span>
                 <span style="font-weight:bold;color:${subColor};">${cnt}${subGoal ? '/' + subGoal : ''}</span>
               </div>`;
             });
-            s += '</div>';
           }
-          s += '</div>';
         });
         s += '</div>';
         return s;
@@ -2513,6 +2545,33 @@
             }
           });
         }
+      }
+    }
+
+    function togglePrivilegeFromUserBtn() {
+      const privs = currentUser.privileges || [];
+      if (!privs.length) return; // ingen behörighet
+      // Öppna/stäng privilege-togglen
+      const toggleEl = document.getElementById('privilege-toggle');
+      if (toggleEl) {
+        toggleEl.classList.toggle('hidden');
+        closeMenu();
+      }
+    }
+
+    function populatePrivKlinikSelect() {
+      const sel = document.getElementById('edit-priv-klinik');
+      if (!sel || sel.options.length > 1) return;
+      // Global admin: alla kliniker
+      if (activeKlinikId === '*' && appData && appData.klinikIdMap) {
+        sel.innerHTML = '<option value="*">* (global)</option>';
+        Object.entries(appData.klinikIdMap).forEach(([namn, kid]) => {
+          const opt = document.createElement('option');
+          opt.value = kid; opt.textContent = namn;
+          sel.appendChild(opt);
+        });
+      } else if (activeKlinikId) {
+        sel.innerHTML = `<option value="${activeKlinikId}" selected>${activeKlinikId}</option>`;
       }
     }
 
