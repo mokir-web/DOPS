@@ -515,6 +515,7 @@
           <div id="confirm-time-this" style="font-size:22px;font-weight:bold;color:#3d5c4a;"></div>
           <div id="confirm-time-total" style="font-size:14px;color:#6b5c52;margin-top:8px;padding-top:8px;border-top:1px solid #d8cfc5;"></div>
           <div id="confirm-time-context" style="font-size:13px;color:#9e8e82;margin-top:4px;font-style:italic;"></div>
+          <div id="confirm-ai-sig" style="display:none;font-size:11px;color:#b0a498;margin-top:4px;text-align:right;">— Claude Haiku (AI)</div>
         </div>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
           <button class="btn-primary" onclick="showPanel('assessment')">Ny bedömning</button>
@@ -1429,15 +1430,16 @@
             const totStr = h > 0 ? h + ' tim ' + m + ' min' : m + ' min';
             document.getElementById('confirm-time-total').textContent =
               'Totalt sparat med MoraDOPS: ' + totStr;
-            // Hämta kontextmening via AI (med sheets-fallback)
+            // Hämta kontextmening baserat på TOTAL sparad tid
             api('getContextPhrase', { minutes: tot }).then(result => {
               const ctx = result && result.text ? result.text : '';
               const ctxEl = document.getElementById('confirm-time-context');
               if (ctxEl) {
                 ctxEl.textContent = ctx;
-                // Liten indikator om AI genererade den
-                if (result && result.source === 'ai') {
-                  ctxEl.title = 'Genererad av AI';
+                // Visa AI-signatur
+                const sig = document.getElementById('confirm-ai-sig');
+                if (sig) {
+                  sig.style.display = result && result.source === 'ai' ? 'block' : 'none';
                 }
               }
             }).catch(() => {
