@@ -458,7 +458,8 @@
             <div id="nav-user" style="font-weight:bold;font-size:15px;color:#2a1f18;"></div>
             <div id="nav-jobrole" style="font-size:12px;color:#6b5c52;margin-top:1px;"></div>
             <div id="nav-clinic" style="font-size:12px;color:#6b5c52;"></div>
-            <div id="nav-role-label" style="font-size:12px;color:#3d5c4a;font-weight:bold;margin-top:2px;display:none;"></div>
+            <div id="nav-role-label" style="font-size:12px;color:#3d5c4a;font-weight:bold;margin-top:2px;"></div>
+            <div id="nav-other-roles" style="font-size:11px;color:#9e8e82;margin-top:2px;display:none;"></div>
           </div>
           <!-- Rollval expanderas under knappen -->
           <div id="privilege-inline" class="hidden" style="background:#ede8e2;border:1.5px solid #c4b8ac;border-top:none;border-radius:0 0 6px 6px;margin-bottom:8px;overflow:hidden;">
@@ -583,6 +584,7 @@
     <!-- ── STATISTICS ───────────────────────────────────────────── -->
     <div id="panel-statistics" class="hidden">
       <h2>Klinikens statistik</h2>
+      <div id="stat-trend-filter-btns" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center;"></div>
       <div id="stat-klinik-row" class="hidden" style="margin-bottom:14px;">
         <label class="field-label">Klinik</label>
         <select id="stat-klinik-select" style="max-width:300px;" onchange="loadStatistics()">
@@ -1024,6 +1026,9 @@
       if (hbtn) hbtn.onclick = toggleMenu;
       renderPrivilegeToggle();
       updateSidebarPrivButtons(null);
+      // Sätt initial roll-label till yrkesroll
+      const initRoleLabel = document.getElementById('nav-role-label');
+      if (initRoleLabel) { initRoleLabel.textContent = currentUser.jobRole || ''; initRoleLabel.style.display = 'block'; }
       // Dölj Registrera bedömning för rena mottagare
       const isReceiverOnly = currentUser.userRole === 'Mottagare';
       const assessmentBtn = document.getElementById('nav-btn-assessment');
@@ -1089,15 +1094,22 @@
       if (docsBtn)   docsBtn.classList.toggle('hidden', !isAdmin);
       if (divider)   divider.style.display = hasPriv ? 'block' : 'none';
       if (roleLabel) {
-        if (privilege === 'Administratör') {
-          roleLabel.textContent = 'Administratör';
-          roleLabel.style.display = 'block';
-        } else if (privilege === 'Studierektor') {
-          roleLabel.textContent = 'Studierektor';
-          roleLabel.style.display = 'block';
-        } else {
-          roleLabel.textContent = '';
-          roleLabel.style.display = 'none';
+        const privs = currentUser.privileges || [];
+        // Aktiv roll
+        let activeLabel = '';
+        if (privilege === 'Administratör') activeLabel = 'Administratör';
+        else if (privilege === 'Studierektor') activeLabel = 'Studierektor';
+        else activeLabel = currentUser.jobRole || '';
+        roleLabel.textContent = activeLabel;
+        roleLabel.style.display = 'block';
+        // Övriga tillgängliga roller
+        const otherRolesEl = document.getElementById('nav-other-roles');
+        if (otherRolesEl && privs.length) {
+          const all = [{ label: currentUser.jobRole || 'Mitt konto', value: null }];
+          privs.forEach(p => all.push({ label: p.privilege, value: p.privilege }));
+          const others = all.filter(o => o.label !== activeLabel);
+          otherRolesEl.textContent = others.length ? others.map(o => o.label).join(' · ') : '';
+          otherRolesEl.style.display = others.length ? 'block' : 'none';
         }
       }
     }
@@ -2197,7 +2209,18 @@
       if (s('profile-firstname'))    s('profile-firstname').value    = currentUser.firstName  || '';
       if (s('profile-lastname'))     s('profile-lastname').value     = currentUser.lastName   || '';
       if (s('profile-email-input'))  s('profile-email-input').value  = currentUser.email      || '';
-      if (s('profile-clinic-input')) s('profile-clinic-input').value = currentUser.clinic     || '';
+      const clinicSel = s('profile-clinic-input');
+      if (clinicSel) {
+        // Fyll dropdown om tom
+        if (clinicSel.options.length <= 1 && appData && appData.klinikIdMap) {
+          Object.entries(appData.klinikIdMap).sort((a,b) => a[0].localeCompare(b[0])).forEach(([namn]) => {
+            const opt = document.createElement('option');
+            opt.value = namn; opt.textContent = namn;
+            clinicSel.appendChild(opt);
+          });
+        }
+        clinicSel.value = currentUser.clinic || '';
+      }
       if (s('profile-jobrole'))      s('profile-jobrole').value      = currentUser.jobRole    || '';
       if (s('profile-userrole'))     s('profile-userrole').value     = currentUser.userRole   || '';
       if (s('profile-email-notify')) s('profile-email-notify').checked = currentUser.emailNotify === true || currentUser.emailNotify === 'Ja';
@@ -2623,8 +2646,13 @@
         let s = `<div class="section-header" style="margin-top:24px;">${title}</div>`;
         s += '<div style="background:#f5f1ec;border:1.5px solid #d8cfc5;border-radius:8px;padding:14px;margin-top:14px;max-width:600px;">';
         // Gruppera alla DOPS: X under en DOPS-rubrik
-        const dopsForms = Object.entries(forms).filter(([ft]) => ft.startsWith('DOPS:') || ft.startsWith('DOPS '));
-        const otherForms = Object.entries(forms).filter(([ft]) => !ft.startsWith('DOPS:') && !ft.startsWith('DOPS '));
+        const dopsForms = Object.entries(forms).filter(([ft]) =>
+          (ft.startsWith('DOPS:') || ft.startsWith('DOPS ')) &&
+          ft !== 'Operationsspecifik DOPS'
+        );
+        const otherForms = Object.entries(forms).filter(([ft]) =>
+          !ft.startsWith('DOPS:') && !ft.startsWith('DOPS ') && ft !== 'Operationsspecifik DOPS'
+        );
         // Bygg samlad DOPS-rad
         if (dopsForms.length) {
           const dopsTotal = dopsForms.reduce((sum,[,v]) => sum + v.count, 0);
@@ -3000,6 +3028,15 @@
       } catch(e) { /* tyst */ }
     }
 
+    function filterStatTrend(days, btn) {
+      document.querySelectorAll('#stat-trend-filter-btns button').forEach(b => {
+        b.style.background = b === btn ? '#3d5c4a' : '#d8cfc5';
+        b.style.color = b === btn ? '#f0ede8' : '#2a1f18';
+      });
+      window._statTrendDays = days;
+      loadStatistics();
+    }
+
     function toggleMenu() {
       const sidebar = document.getElementById('sidebar');
       const overlay = document.getElementById('mob-sidebar-overlay');
@@ -3063,6 +3100,23 @@
       if (panel === 'assessment')       { resetAssessment(); }
       if (panel === 'my-assessments')   { applyFilters(); }
       if (panel === 'statistics') {
+        // Bygg tidsfilterknappar för statistik om de saknas
+        const statFiltEl = document.getElementById('stat-trend-filter-btns');
+        if (statFiltEl && statFiltEl.children.length === 0) {
+          const lbl = document.createElement('span');
+          lbl.style.cssText = 'font-size:13px;color:#6b5c52;align-self:center;margin-right:4px;';
+          lbl.textContent = 'Visa:';
+          statFiltEl.appendChild(lbl);
+          [['1 vecka',7],['1 månad',30],['3 månader',90],['6 månader',180],['1 år',365],['MAX',0]].forEach(([label, days], i) => {
+            const btn = document.createElement('button');
+            btn.textContent = label;
+            btn.style.cssText = 'border:none;border-radius:4px;padding:4px 10px;font-size:13px;cursor:pointer;';
+            btn.style.background = i === 3 ? '#3d5c4a' : '#d8cfc5';
+            btn.style.color = i === 3 ? '#f0ede8' : '#2a1f18';
+            btn.onclick = () => filterStatTrend(days, btn);
+            statFiltEl.appendChild(btn);
+          });
+        }
         // Visa klinikväljare för global admin
         const statKlinikRow = document.getElementById('stat-klinik-row');
         if (statKlinikRow && activePrivilege === 'Administratör' && activeKlinikId === '*') {
