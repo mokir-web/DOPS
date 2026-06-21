@@ -3,6 +3,7 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <meta name="format-detection" content="telephone=no">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'><circle cx='22' cy='22' r='17' fill='none' stroke='%232a1f18' stroke-width='2'/><text x='22' y='27' font-family='Arial' font-size='13' font-weight='700' fill='%232a1f18' text-anchor='middle'>MD</text><circle cx='35' cy='35' r='8' fill='%234a9e62'/></svg>">
   <style>
     * { box-sizing: border-box; }
     html { width: 100%; font-size: 16px; }
@@ -2153,8 +2154,30 @@
     function resetStatFilters() {
       document.getElementById('stat-date-from').value = '';
       document.getElementById('stat-date-to').value   = '';
-      document.querySelectorAll('#stat-formtype-filter input').forEach(cb => cb.checked = false);
+      document.getElementById('stat-formtype-filter').innerHTML = ''; // byggs om med aggregerade typer
       loadStatistics();
+    }
+
+    // ── Aggregera formulärtyper: alla "DOPS: *" → "DOPS" ─────────────────
+    function aggregateFormTypes(byFormType) {
+      const agg = {};
+      Object.entries(byFormType).forEach(([ft, count]) => {
+        const key = ft.startsWith('DOPS') ? 'DOPS' : ft;
+        agg[key] = (agg[key] || 0) + count;
+      });
+      return agg;
+    }
+    function aggregateByMonth(byFormTypeByMonth) {
+      const agg = {};
+      Object.entries(byFormTypeByMonth).forEach(([month, data]) => {
+        agg[month] = { label: data.label };
+        Object.entries(data).forEach(([ft, v]) => {
+          if (ft === 'label') return;
+          const key = ft.startsWith('DOPS') ? 'DOPS' : ft;
+          agg[month][key] = (agg[month][key] || 0) + (typeof v === 'number' ? v : 0);
+        });
+      });
+      return agg;
     }
 
     const CHART_COLORS = [
@@ -2173,10 +2196,12 @@
         const effectiveStatKlinik = (activePrivilege === 'Administratör' && activeKlinikId === '*') ? statKlinikId : (activeKlinikId || currentUser.klinikId || '*');
         const stats = await api('getStatistics', { filters: { dateFrom, dateTo }, klinikId: effectiveStatKlinik });
 
-        // Uppdatera formulärfilter-chips
+        // Uppdatera formulärfilter-chips (aggregerade typer)
+        const aggByFormType = aggregateFormTypes(stats.byFormType);
+        const aggByMonth    = aggregateByMonth(stats.byFormTypeByMonth || {});
         const filterContainer = document.getElementById('stat-formtype-filter');
         if (filterContainer.children.length === 0) {
-          Object.keys(stats.byFormType).sort().forEach(ft => {
+          Object.keys(aggByFormType).sort().forEach(ft => {
             const lbl = document.createElement('label');
             lbl.className = 'filter-chip';
             const cb = document.createElement('input');
@@ -2188,51 +2213,46 @@
           });
         }
 
-        // Filtrera data på valda formulär
+        // Filtrera data på valda formulär (aggregerade)
         const activeFormFilter = [...document.querySelectorAll('#stat-formtype-filter input:checked')].map(cb => cb.value);
 
-        // ── Linjediagram ─────────────────────────────────────────
-        const months = Object.values(stats.byFormTypeByMonth || {});
+        // ── Areadiagram (staplat) ─────────────────────────────────
+        const months = Object.values(aggByMonth);
         const monthLabels = months.map(m => m.label);
-
-        // Avgör vilka formulärtyper att visa
         const formTypes = activeFormFilter.length > 0
           ? activeFormFilter
-          : Object.keys(stats.byFormType).sort();
+          : Object.keys(aggByFormType).sort();
 
-        // Bygg datasets
-        const lineDatasets = formTypes.map((ft, i) => ({
+        const areaDatasets = formTypes.map((ft, i) => ({
           label: ft,
           data: months.map(m => m[ft] || 0),
           borderColor: CHART_COLORS[i % CHART_COLORS.length],
-          backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '22',
+          backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '55',
           tension: 0.3,
-          fill: false,
-          pointRadius: 4,
+          fill: true,
+          pointRadius: 3,
         }));
-
-        // Total-linje borttagen per användarönskemål
 
         if (lineChart) lineChart.destroy();
         const lineCtx = document.getElementById('chart-line').getContext('2d');
         lineChart = new Chart(lineCtx, {
           type: 'line',
-          data: { labels: monthLabels, datasets: lineDatasets },
+          data: { labels: monthLabels, datasets: areaDatasets },
           options: {
             responsive: true, maintainAspectRatio: true,
             plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
             scales: {
-              y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#d8cfc5' } },
+              y: { beginAtZero: true, stacked: true, ticks: { stepSize: 1 }, grid: { color: '#d8cfc5' } },
               x: { grid: { color: '#d8cfc5' } }
             }
           }
         });
 
-        // ── Pajdiagram ───────────────────────────────────────────
-        const pieLabels = Object.keys(stats.byFormType).filter(ft =>
+        // ── Pajdiagram (aggregerade) ─────────────────────────────
+        const pieLabels = Object.keys(aggByFormType).filter(ft =>
           activeFormFilter.length === 0 || activeFormFilter.includes(ft)
         );
-        const pieData = pieLabels.map(ft => stats.byFormType[ft]);
+        const pieData = pieLabels.map(ft => aggByFormType[ft]);
 
         if (pieChart) pieChart.destroy();
         const pieCtx = document.getElementById('chart-pie').getContext('2d');
@@ -2846,8 +2866,8 @@
         const ctx = document.getElementById('overview-chart')?.getContext('2d');
         if (ctx) {
           const datasets = [];
-          if (showReceived) datasets.push({ label: 'Mottagna', data: months.map(m => m.received), borderColor: '#3d5c4a', backgroundColor: '#3d5c4a22', tension: 0.3, fill: false });
-          if (showSent)     datasets.push({ label: 'Registrerade', data: months.map(m => m.sent), borderColor: '#9e7c68', backgroundColor: '#9e7c6822', tension: 0.3, fill: false });
+          if (showReceived) datasets.push({ label: 'Mottagna', data: months.map(m => m.received), borderColor: '#3d5c4a', backgroundColor: '#3d5c4a33', tension: 0.3, fill: true });
+          if (showSent)     datasets.push({ label: 'Registrerade', data: months.map(m => m.sent), borderColor: '#9e7c68', backgroundColor: '#9e7c6833', tension: 0.3, fill: true });
           window._overviewChartData = { months, showSent, showReceived };
           window._overviewChart = new Chart(ctx, {
             type: 'line',
@@ -3129,8 +3149,8 @@
       if (!ctx) return;
       window._overviewChart?.destroy();
       const datasets = [];
-      if (d.showReceived) datasets.push({ label: 'Mottagna',     data: filtered.map(m => m.received), borderColor: '#3d5c4a', backgroundColor: '#3d5c4a22', tension: 0.3, fill: false });
-      if (d.showSent)     datasets.push({ label: 'Registrerade', data: filtered.map(m => m.sent),     borderColor: '#9e7c68', backgroundColor: '#9e7c6822', tension: 0.3, fill: false });
+      if (d.showReceived) datasets.push({ label: 'Mottagna',     data: filtered.map(m => m.received), borderColor: '#3d5c4a', backgroundColor: '#3d5c4a33', tension: 0.3, fill: true });
+      if (d.showSent)     datasets.push({ label: 'Registrerade', data: filtered.map(m => m.sent),     borderColor: '#9e7c68', backgroundColor: '#9e7c6833', tension: 0.3, fill: true });
       window._overviewChart = new Chart(ctx, {
         type: 'line',
         data: { labels: filtered.map(m => m.label), datasets },
@@ -3337,6 +3357,8 @@
         } else if (statKlinikRow) {
           statKlinikRow.classList.add('hidden');
         }
+        // Rensa chips så de byggs om aggregerade vid varje besök
+        document.getElementById('stat-formtype-filter').innerHTML = '';
         loadStatistics();
       }
       if (panel === 'clinic-overview')  { loadClinicOverview(); }
