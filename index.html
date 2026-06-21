@@ -300,7 +300,7 @@
       </div>
       <div class="field">
         <label class="field-label">PIN</label>
-        <input type="password" id="login-pin" placeholder="••••" maxlength="6">
+        <input type="password" id="login-pin" placeholder="••••" maxlength="6" autocomplete="current-password">
       </div>
       <div class="btn-row">
         <button class="btn-primary" onclick="doLogin()">Logga in</button>
@@ -384,6 +384,7 @@
           <option value="Registrerare">Registrerare</option>
           <option value="Mottagare">Mottagare</option>
           <option value="Blandbild">Blandbild</option>
+          <option value="Administratör">Administratör</option>
         </select>
       </div>
       <div class="btn-row">
@@ -422,7 +423,7 @@
 
       <!-- ── SIDEBAR ────────────────────────────────────────────── -->
       <div class="sidebar" id="sidebar">
-        <div class="sidebar-logo" onclick="showPanel('assessment')">
+        <div class="sidebar-logo" onclick="goToStartPage()">
           <svg width="34" height="34" viewBox="0 0 44 44" style="overflow:visible;flex-shrink:0;">
             <circle cx="22" cy="22" r="17" fill="none" stroke="#2a1f18" stroke-width="2"/>
             <text x="22" y="27" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#2a1f18" text-anchor="middle">MD</text>
@@ -720,6 +721,41 @@
       <div id="admin-clinic-view">
         <div class="section-header">Välj klinik</div>
         <div id="admin-clinic-list" style="margin-top:12px;"><p style="color:#888;">Läser in...</p></div>
+        <!-- Schemalagda utskick -->
+        <div class="section-header" style="margin-top:28px;">Schemalagda utskick</div>
+        <p style="font-size:14px;color:#6b5c52;margin:4px 0 12px;">Automatiska veckovisa e-postpåminnelser till valda användare.</p>
+        <button class="btn-secondary btn-small" onclick="showScheduleForm()">+ Ny påminnelse</button>
+        <div id="schedule-list" style="margin-top:12px;"></div>
+        <!-- Skapa/redigera schema -->
+        <div id="schedule-form" class="hidden filter-box" style="max-width:520px;margin-top:16px;">
+          <h3 style="margin-top:0;">Ny påminnelse</h3>
+          <div class="field"><label class="field-label">Namn</label><input type="text" id="sch-namn" placeholder="T.ex. Veckorapport ST-läkare"></div>
+          <div class="field"><label class="field-label">Dag</label>
+            <select id="sch-dag">
+              <option value="Varje dag">Varje dag</option>
+              <option value="Måndag">Måndag</option><option value="Tisdag">Tisdag</option>
+              <option value="Onsdag">Onsdag</option><option value="Torsdag">Torsdag</option>
+              <option value="Fredag">Fredag</option><option value="Lördag">Lördag</option><option value="Söndag">Söndag</option>
+            </select>
+          </div>
+          <div class="field"><label class="field-label">Tid (HH:MM)</label><input type="time" id="sch-tid" value="07:00"></div>
+          <div class="field"><label class="field-label">Mottagargrupp</label>
+            <select id="sch-typ" onchange="populateScheduleRecipients()">
+              <option value="Registrerare">Registrerare</option>
+              <option value="Mottagare">Mottagare</option>
+              <option value="Blandbild">Blandbild</option>
+              <option value="Alla">Alla</option>
+            </select>
+          </div>
+          <div class="field"><label class="field-label">Mottagare (markera de som ska få utskick)</label>
+            <div id="sch-recipients" style="max-height:200px;overflow-y:auto;border:1px solid #d8cfc5;border-radius:6px;padding:8px;background:#fff;"></div>
+          </div>
+          <div class="btn-row" style="margin-top:14px;">
+            <button class="btn-primary btn-small" onclick="saveSchedule()">Spara</button>
+            <button class="btn-secondary btn-small" onclick="show('schedule-form',false)">Avbryt</button>
+          </div>
+          <div id="sch-status" style="margin-top:8px;"></div>
+        </div>
       </div>
       <div id="admin-detail-view" class="hidden">
         <button class="btn-secondary btn-small" onclick="showClinicList()" style="margin-bottom:16px;">← Alla kliniker</button>
@@ -740,7 +776,7 @@
             <select id="edit-jobrole"><option value="ST">ST</option><option value="Spec">Spec</option><option value="AT">AT</option><option value="BT">BT</option><option value="Admin">Administratör</option></select>
           </div>
           <div class="field"><label class="field-label">Användarroll</label>
-            <select id="edit-userrole"><option value="Registrerare">Registrerare</option><option value="Mottagare">Mottagare</option><option value="Blandbild">Blandbild</option></select>
+            <select id="edit-userrole"><option value="Registrerare">Registrerare</option><option value="Mottagare">Mottagare</option><option value="Blandbild">Blandbild</option><option value="Administratör">Administratör</option></select>
           </div>
           <div class="field"><label class="field-label">Klinik</label>
             <select id="edit-clinic" style="font-size:15px;padding:8px;border:1.5px solid #c4b8ac;border-radius:6px;background:#f5f1ec;width:100%;"></select>
@@ -825,7 +861,7 @@
       <div style="margin-top:16px;padding:12px 16px;background:#f5f1ec;border-radius:6px;border:1px solid #d8cfc5;">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:15px;">
           <input type="checkbox" id="inbox-email-notify" checked style="width:18px;height:18px;accent-color:#3d5c4a;" onchange="saveInboxEmailNotify()">
-          Skicka e-post när jag får en ny förfrågan
+          Skicka e-post när jag får en ny förfrågan om bedömning
         </label>
       </div>
       <!-- Bulk-förfrågan formulär -->
@@ -910,16 +946,30 @@
             <option value="Registrerare">Registrerare</option>
             <option value="Mottagare">Mottagare</option>
             <option value="Blandbild">Blandbild</option>
+            <option value="Administratör">Administratör</option>
           </select>
         </div>
 
         <!-- Aviseringar -->
         <div class="section-header" style="margin-top:24px;">Aviseringar</div>
         <div class="field">
-          <label style="display:flex;align-items:center;gap:12px;cursor:pointer;font-size:18px;">
-            <input type="checkbox" id="profile-email-notify" style="width:22px;height:22px;accent-color:#3d5c4a;">
+          <label style="display:flex;align-items:center;gap:12px;cursor:pointer;font-size:15px;">
+            <input type="checkbox" id="profile-email-notify" style="width:20px;height:20px;accent-color:#3d5c4a;">
             Skicka e-post när jag tar emot en bedömning
           </label>
+        </div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:12px;cursor:pointer;font-size:15px;">
+            <input type="checkbox" id="profile-email-notify-requests" style="width:20px;height:20px;accent-color:#3d5c4a;">
+            Skicka e-post när jag får en förfrågan om bedömning
+          </label>
+        </div>
+
+        <!-- Startsida -->
+        <div class="section-header" style="margin-top:24px;">Startsida</div>
+        <div class="field">
+          <label class="field-label">Välj startsida</label>
+          <select id="profile-startpage" style="font-size:15px;padding:8px;border:1.5px solid #c4b8ac;border-radius:6px;background:#f5f1ec;"></select>
         </div>
 
         <!-- PIN -->
@@ -936,7 +986,7 @@
         <!-- Spara/avbryt -->
         <div class="btn-row" style="margin-top:28px;">
           <button class="btn-primary" onclick="saveProfile()">Spara ändringar</button>
-          <button class="btn-secondary" onclick="prefillProfile()">Avbryt</button>
+          <button class="btn-secondary" onclick="goToStartPage()">Avbryt</button>
         </div>
         <div id="profile-role-status"></div>
         <div id="profile-pin-status"></div>
@@ -1095,7 +1145,10 @@
     };
 
     function bootApp() {
-      activePrivilege = null; // Alltid standardvy vid inloggning
+      // Rensa användar-specifik cache vid (ny) inloggning
+      Object.keys(_bgCache).forEach(k => delete _bgCache[k]);
+
+      activePrivilege = null;
       document.getElementById('login-panel').classList.add('hidden');
       document.getElementById('app').classList.remove('hidden');
       const fullName = `${currentUser.firstName} ${currentUser.lastName}`;
@@ -1103,26 +1156,31 @@
       document.getElementById('nav-clinic').textContent = currentUser.clinic;
       const hbtn = document.getElementById('hamburger-btn');
       if (hbtn) hbtn.onclick = toggleMenu;
+
+      // Auto-aktivera Administratör-roll om userRole=Administratör och privilege finns
+      if (currentUser.userRole === 'Administratör') {
+        const adminPriv = (currentUser.privileges || []).find(p => p.privilege === 'Administratör');
+        if (adminPriv) {
+          activePrivilege = 'Administratör';
+          activeKlinikId  = adminPriv.klinikId || null;
+        }
+      }
+
       renderPrivilegeToggle();
-      updateSidebarPrivButtons(null);
-      // Sätt initial roll-label till yrkesroll
+      updateSidebarPrivButtons(activePrivilege);
       const initRoleLabel = document.getElementById('nav-role-label');
-      if (initRoleLabel) { initRoleLabel.textContent = currentUser.jobRole || ''; initRoleLabel.style.display = 'block'; }
-      // Dölj Registrera bedömning för rena mottagare
+      if (initRoleLabel) { initRoleLabel.textContent = activePrivilege || currentUser.jobRole || ''; initRoleLabel.style.display = 'block'; }
       const isReceiverOnly = currentUser.userRole === 'Mottagare';
       const assessmentBtn = document.getElementById('nav-btn-assessment');
       if (assessmentBtn) assessmentBtn.classList.toggle('hidden', isReceiverOnly);
       prefillAssessment();
       prefillProfile();
-      // Polling: uppdatera badges var 60:e sekund
       setInterval(pollForUpdates, 60000);
-      // Ladda inkorg direkt, landa där om olästa finns
       loadInboxBadge().then(() => {
         const hasUnread = (inboxData?.inbox || []).some(r => !r.read);
         if (hasUnread) showPanel('inbox');
-        else showPanel('overview');
+        else goToStartPage();
       });
-      // Ladda statistik, min översikt och bedömningar i bakgrunden
       setTimeout(backgroundLoad, 1500);
     }
 
@@ -1665,26 +1723,19 @@
             savedMins + ' minuter sparade jämfört med pappersregistrering';
           api('getMyOverview', { email: currentUser.email }).then(ov => {
             const tot = (ov.totalMinutesSaved || 0) + savedMins;
-            const h = Math.floor(tot / 60);
-            const m = tot % 60;
+            const h = Math.floor(tot / 60), m = tot % 60;
             const totStr = h > 0 ? h + ' tim ' + m + ' min' : m + ' min';
             document.getElementById('confirm-time-total').textContent =
               'Totalt sparat med MoraDOPS: ' + totStr;
-            // Hämta kontextmening baserat på TOTAL sparad tid
-            api('getContextPhrase', { minutes: tot }).then(result => {
-              const ctx = result && result.text ? result.text : '';
+            // Kontextmening baserad på JUST DETTA formulärs tid (rolig/absurd)
+            api('getContextPhrase', { minutes: savedMins, mode: 'registration' }).then(r => {
               const ctxEl = document.getElementById('confirm-time-context');
               if (ctxEl) {
-                ctxEl.textContent = ctx;
-                // Visa AI-signatur
+                ctxEl.textContent = r?.text || '';
                 const sig = document.getElementById('confirm-ai-sig');
-                if (sig) {
-                  sig.style.display = result && result.source === 'ai' ? 'block' : 'none';
-                }
+                if (sig) sig.style.display = r?.source === 'ai' ? 'block' : 'none';
               }
-            }).catch(() => {
-              // Tyst fel – bara tom
-            });
+            }).catch(() => {});
           }).catch(() => {});
         } else if (confirmTimeEl) {
           confirmTimeEl.classList.add('hidden');
@@ -1776,6 +1827,14 @@
     }
 
     function renderAssessments(assessments, role) {
+      // Förinställ datumfilter vid första laddning
+      const fromEl = document.getElementById('filter-date-from');
+      const toEl   = document.getElementById('filter-date-to');
+      if (fromEl && !fromEl.value && assessments.length) {
+        const earliest = assessments.map(a => a.timestamp).sort()[0];
+        if (earliest) fromEl.value = earliest.slice(0, 10);
+      }
+      if (toEl && !toEl.value) toEl.value = new Date().toISOString().slice(0, 10);
       const list = document.getElementById('my-assessments-list');
       if (!assessments.length) {
         list.innerHTML = '<p style="color:#888">Inga bedömningar hittades.</p>';
@@ -2343,26 +2402,29 @@
         // Filtrera data på valda formulär (aggregerade)
         const activeFormFilter = [...document.querySelectorAll('#stat-formtype-filter input:checked')].map(cb => cb.value);
 
-        // ── Areadiagram (staplat) ─────────────────────────────────
+        // ── Areadiagram: alla formulärtyper, ej aggregerade, minst nederst ──
         const months = Object.values(aggByMonth);
         const monthLabels = months.map(m => m.label);
-        const formTypes = activeFormFilter.length > 0
-          ? activeFormFilter
-          : Object.keys(aggByFormType).sort();
 
-        const areaDatasets = formTypes.map((ft, i) => ({
+        // Använd icke-aggregerad data för alla subtyper
+        const rawByFormType = stats.byFormType || {};
+        const rawByMonth    = stats.byFormTypeByMonth || {};
+        const allFormTypes  = activeFormFilter.length > 0 ? activeFormFilter
+          : Object.keys(rawByFormType).sort((a,b) => rawByFormType[a] - rawByFormType[b]); // minst → mest
+
+        const areaDatasets = allFormTypes.map((ft, i) => ({
           label: ft,
-          data: months.map(m => m[ft] || 0),
+          data: Object.values(rawByMonth).map(m => m[ft] || 0),
           borderColor: CHART_COLORS[i % CHART_COLORS.length],
           backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '55',
-          tension: 0.3, fill: true, pointRadius: 3,
+          tension: 0.3, fill: true, pointRadius: 2,
         }));
 
         if (lineChart) lineChart.destroy();
         const lineCtx = document.getElementById('chart-line').getContext('2d');
         lineChart = new Chart(lineCtx, {
           type: 'line',
-          data: { labels: monthLabels, datasets: areaDatasets },
+          data: { labels: Object.values(rawByMonth).map(m => m.label), datasets: areaDatasets },
           options: {
             responsive: true, maintainAspectRatio: true,
             plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
@@ -2450,7 +2512,21 @@
       }
       if (s('profile-jobrole'))      s('profile-jobrole').value      = currentUser.jobRole    || '';
       if (s('profile-userrole'))     s('profile-userrole').value     = currentUser.userRole   || '';
-      if (s('profile-email-notify')) s('profile-email-notify').checked = currentUser.emailNotify === true || currentUser.emailNotify === 'Ja';
+      if (s('profile-email-notify'))
+        s('profile-email-notify').checked = currentUser.emailNotify === true || currentUser.emailNotify === 'Ja';
+      if (s('profile-email-notify-requests'))
+        s('profile-email-notify-requests').checked = currentUser.emailNotifyRequests !== false && currentUser.emailNotifyRequests !== 'Nej';
+      // Startsida-dropdown
+      const startSel = s('profile-startpage');
+      if (startSel) {
+        startSel.innerHTML = '';
+        getStartPageOptions().forEach(o => {
+          const opt = document.createElement('option');
+          opt.value = o.value; opt.textContent = o.label; startSel.appendChild(opt);
+        });
+        const saved = localStorage.getItem('dops_startpage_' + (currentUser?.email || ''));
+        startSel.value = saved || '';
+      }
       if (s('profile-current-pin'))  s('profile-current-pin').value  = '';
       if (s('profile-new-pin'))      s('profile-new-pin').value      = '';
       const statusEls = ['profile-role-status','profile-pin-status'];
@@ -2467,7 +2543,9 @@
       const newKlinikId = (appData && appData.klinikIdMap && clinic) ? (appData.klinikIdMap[clinic] || currentUser.klinikId) : currentUser.klinikId;
       const jobRole     = s('profile-jobrole')?.value  || '';
       const userRole    = s('profile-userrole')?.value || '';
-      const emailNotify = s('profile-email-notify')?.checked ? 'Ja' : 'Nej';
+      const emailNotify         = s('profile-email-notify')?.checked ? 'Ja' : 'Nej';
+      const emailNotifyRequests = s('profile-email-notify-requests')?.checked ? 'Ja' : 'Nej';
+      const startPage           = s('profile-startpage')?.value || '';
       const currentPin  = (s('profile-current-pin')?.value || '').trim();
       const newPin      = (s('profile-new-pin')?.value     || '').trim();
 
@@ -2486,23 +2564,26 @@
 
         const result = await api('updateProfile', {
           email: currentUser.email,
-          updates: { firstName, lastName, newEmail, clinic, klinikId: newKlinikId, jobRole, userRole, emailNotify,
+          updates: { firstName, lastName, newEmail, clinic, klinikId: newKlinikId, jobRole, userRole,
+            emailNotify, emailNotifyRequests, startPage,
             ...(newPin ? { newPin } : {}) }
         });
         if (result.error) { setStatus('profile-role-status', result.error, true); return; }
 
-        // Uppdatera currentUser
-        currentUser.firstName   = firstName;
-        currentUser.lastName    = lastName;
-        currentUser.email       = newEmail || currentUser.email;
-        currentUser.clinic      = clinic;
+        currentUser.firstName          = firstName;
+        currentUser.lastName           = lastName;
+        currentUser.email              = newEmail || currentUser.email;
+        currentUser.clinic             = clinic;
         if (newKlinikId) currentUser.klinikId = newKlinikId;
-        currentUser.jobRole     = jobRole;
-        currentUser.userRole    = userRole;
-        currentUser.emailNotify = emailNotify === 'Ja';
+        currentUser.jobRole            = jobRole;
+        currentUser.userRole           = userRole;
+        currentUser.emailNotify        = emailNotify === 'Ja';
+        currentUser.emailNotifyRequests = emailNotifyRequests === 'Ja';
         localStorage.setItem('dops_user', JSON.stringify(currentUser));
-
-        // Uppdatera nav
+        if (startPage !== undefined) {
+          if (startPage) localStorage.setItem('dops_startpage_' + currentUser.email, startPage);
+          else localStorage.removeItem('dops_startpage_' + currentUser.email);
+        }
         const fullName = `${firstName} ${lastName}`;
         document.getElementById('nav-user').textContent  = fullName;
         document.getElementById('nav-clinic').textContent = clinic;
@@ -2691,6 +2772,23 @@
           btn.textContent = 'Utför bedömning';
           btn.onclick = () => startRequestedAssessment(item);
           card.appendChild(btn);
+        } else if (!isInbox && item.status !== 'Utförd') {
+          const doneBtn = document.createElement('button');
+          doneBtn.className = 'btn-secondary btn-small';
+          doneBtn.style.marginTop = '10px';
+          doneBtn.textContent = '✓ Markera utförd';
+          doneBtn.onclick = () => {
+            api('markRequestDone', { id: item.id }).then(() => {
+              bgInvalidate('inbox_' + currentUser.email);
+              loadInbox();
+            }).catch(() => {});
+          };
+          card.appendChild(doneBtn);
+        } else if (!isInbox && item.status === 'Utförd') {
+          const tag = document.createElement('div');
+          tag.style.cssText = 'margin-top:8px;font-size:13px;color:#4a9e62;font-weight:bold;';
+          tag.textContent = '✓ Utförd';
+          card.appendChild(tag);
         }
         el.appendChild(card);
         // Markera som läst
@@ -2899,65 +2997,73 @@
       const el = document.getElementById('overview-content');
       const userRole = currentUser.userRole;
       let html = '';
-      // totalMinutesSaved block
+
+      // Totalt sparat-banner
       if (data.totalMinutesSaved > 0 && (userRole === 'Registrerare' || userRole === 'Blandbild')) {
-        const h = Math.floor(data.totalMinutesSaved / 60);
-        const m = data.totalMinutesSaved % 60;
+        const h = Math.floor(data.totalMinutesSaved / 60), m = data.totalMinutesSaved % 60;
         const totStr = h > 0 ? `${h} tim ${m} min` : `${m} min`;
-        html += `<div style="background:#3d5c4a;color:#f0ede8;border-radius:8px;padding:16px 20px;margin-bottom:20px;display:inline-block;min-width:220px;">
+        html += `<div style="background:#3d5c4a;color:#f0ede8;border-radius:8px;padding:16px 20px;margin-bottom:8px;display:inline-block;min-width:220px;">
           <div style="font-size:12px;opacity:0.8;letter-spacing:1px;">TOTALT SPARAT MED MORADOPS</div>
           <div style="font-size:28px;font-weight:bold;margin-top:4px;">${totStr}</div>
         </div>`;
+        html += `<div id="overview-context-msg" style="font-size:14px;color:#6b5c52;font-style:italic;margin-bottom:16px;"></div>`;
+        // Hämta AI-kontextmening asynkront (rimliga aktiviteter)
+        setTimeout(() => {
+          api('getContextPhrase', { minutes: data.totalMinutesSaved, mode: 'overview' }).then(r => {
+            const el2 = document.getElementById('overview-context-msg');
+            if (el2 && r?.text) el2.textContent = r.text;
+          }).catch(() => {});
+        }, 0);
       }
+
       const showSent     = userRole === 'Registrerare' || userRole === 'Blandbild';
       const showReceived = userRole === 'Mottagare'    || userRole === 'Blandbild';
-      function goalBar(count, goal) {
+
+      // Målstapler använder 6-månadersvärden
+      const rec6m  = data.received_6m || {};
+      const sent6m = data.sent_6m     || {};
+
+      function goalBar(count6m, countAll, goal) {
         if (!goal) return '';
-        const pct = Math.min(100, Math.round(count / goal * 100));
-        const color = count >= goal ? '#4a9e62' : count > 0 ? '#c8a96e' : '#9e2a18';
+        const pct   = Math.min(100, Math.round(count6m / goal * 100));
+        const color = count6m >= goal ? '#4a9e62' : count6m > 0 ? '#c8a96e' : '#9e2a18';
         return `<div style="margin-top:4px;background:#d8cfc5;border-radius:4px;height:8px;max-width:200px;">
           <div style="background:${color};border-radius:4px;height:8px;width:${pct}%;transition:width 0.4s;"></div>
         </div>
-        <div style="font-size:12px;color:#6b5c52;margin-top:2px;">${count} / ${goal} <span style="color:${color};">${count >= goal ? '✓ Uppnått' : ''}</span></div>`;
+        <div style="font-size:11px;color:#9e8e82;margin-top:2px;">${count6m} / ${goal} senaste 6 mån <span style="color:${color};">${count6m >= goal ? '✓' : ''}</span></div>`;
       }
 
-      function renderFormGroup(title, forms, subGoals) {
+      function renderFormGroup(title, forms, subGoals, is6mForms) {
         if (!Object.keys(forms).length) return '';
         let s = `<div class="section-header" style="margin-top:24px;">${title}</div>`;
         s += '<div style="background:#f5f1ec;border:1.5px solid #d8cfc5;border-radius:8px;padding:14px;margin-top:14px;max-width:600px;">';
-        // Gruppera alla DOPS: X under en DOPS-rubrik
-        const dopsForms = Object.entries(forms).filter(([ft]) =>
-          (ft.startsWith('DOPS:') || ft.startsWith('DOPS ')) &&
-          ft !== 'Operationsspecifik DOPS'
-        );
-        const otherForms = Object.entries(forms).filter(([ft]) =>
-          !ft.startsWith('DOPS:') && !ft.startsWith('DOPS ') && ft !== 'Operationsspecifik DOPS'
-        );
-        // Bygg samlad DOPS-rad
+        const dopsForms  = Object.entries(forms).filter(([ft]) => ft.startsWith('DOPS:') || ft.startsWith('DOPS '));
+        const otherForms = Object.entries(forms).filter(([ft]) => !ft.startsWith('DOPS:') && !ft.startsWith('DOPS ') && ft !== 'Operationsspecifik DOPS');
+
         if (dopsForms.length) {
-          const dopsTotal = dopsForms.reduce((sum,[,v]) => sum + v.count, 0);
-          const dopsGoal  = dopsForms.reduce((sum,[,v]) => sum + (v.goal||0), 0);
-          const dopsColor = dopsGoal ? (dopsTotal >= dopsGoal ? '#4a9e62' : dopsTotal > 0 ? '#c8a96e' : '#9e2a18') : '#3d5c4a';
+          const dopsTotal6m = dopsForms.reduce((sum,[ft]) => sum + (is6mForms?.[ft] || 0), 0);
+          const dopsGoal    = dopsForms.reduce((sum,[,v]) => sum + (v.goal||0), 0);
           s += '<div style="font-size:15px;font-weight:bold;color:#2a1f18;margin-bottom:4px;">DOPS</div>';
-          // Subformulär
           dopsForms.sort((a,b) => a[0].localeCompare(b[0])).forEach(([ft, v]) => {
             const subName = ft.replace('DOPS: ','').replace('DOPS:','');
-            const color = v.goal ? (v.count >= v.goal ? '#4a9e62' : v.count > 0 ? '#c8a96e' : '#9e2a18') : '#6b5c52';
-            s += `<div style="display:flex;align-items:center;gap:10px;padding:3px 0 3px 14px;">`;
+            const count6m = is6mForms?.[ft] || 0;
+            const color   = v.goal ? (count6m >= v.goal ? '#4a9e62' : count6m > 0 ? '#c8a96e' : '#9e2a18') : '#6b5c52';
+            // Klickbar rad → Mina bedömningar med filter
+            s += `<div style="display:flex;align-items:center;gap:10px;padding:3px 0 3px 14px;cursor:pointer;" onclick="navigateToAssessments('${esc(ft)}')">`;
             s += `<div style="font-size:14px;color:#6b5c52;flex:1;">${esc(subName)}</div>`;
-            s += `<div style="flex:2;max-width:160px;">${goalBar(v.count, v.goal)}</div>`;
+            s += `<div style="flex:2;max-width:160px;">${goalBar(count6m, v.count, v.goal)}</div>`;
             s += `<div style="font-size:16px;font-weight:bold;color:${color};min-width:28px;text-align:right;">${v.count}</div>`;
             s += '</div>';
           });
           if (otherForms.length) s += '<div style="height:1px;background:#d8cfc5;margin:10px 0;"></div>';
         }
-        const sortedOther = otherForms.sort((a,b) => a[0].localeCompare(b[0]));
-        sortedOther.forEach(([ft, v], idx) => {
-          const color = v.goal ? (v.count >= v.goal ? '#4a9e62' : v.count > 0 ? '#c8a96e' : '#9e2a18') : '#3d5c4a';
+        otherForms.sort((a,b) => a[0].localeCompare(b[0])).forEach(([ft, v], idx) => {
+          const count6m = is6mForms?.[ft] || 0;
+          const color = v.goal ? (count6m >= v.goal ? '#4a9e62' : count6m > 0 ? '#c8a96e' : '#9e2a18') : '#3d5c4a';
           if (idx > 0) s += '<div style="height:1px;background:#d8cfc5;margin:10px 0;"></div>';
-          s += '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">';
+          s += `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;" onclick="navigateToAssessments('${esc(ft)}')">`;
           s += `<div style="font-size:15px;font-weight:bold;min-width:140px;color:#2a1f18;">${esc(ft)}</div>`;
-          s += '<div style="flex:1;">' + goalBar(v.count, v.goal) + '</div>';
+          s += '<div style="flex:1;">' + goalBar(count6m, v.count, v.goal) + '</div>';
           s += `<div style="font-size:18px;font-weight:bold;color:${color};min-width:32px;text-align:right;">${v.count}</div>`;
           s += '</div>';
         });
@@ -2979,8 +3085,8 @@
         html += '<canvas id="overview-chart" height="160"></canvas></div>';
       }
 
-      if (showReceived) html += renderFormGroup('Mottagna bedömningar', data.received, data.subGoals);
-      if (showSent)     html += renderFormGroup('Registrerade bedömningar', data.sent, data.subGoals);
+      if (showReceived) html += renderFormGroup('Mottagna bedömningar',     data.received, data.subGoals, rec6m);
+      if (showSent)     html += renderFormGroup('Registrerade bedömningar', data.sent,     data.subGoals, sent6m);
 
       el.innerHTML = html;
 
@@ -3065,14 +3171,96 @@
       const notify = checked ? 'Ja' : 'Nej';
       api('updateProfile', {
         email: currentUser.email,
-        updates: { emailNotify: notify }
+        updates: { emailNotifyRequests: notify }
       }).then(() => {
-        currentUser.emailNotify = checked;
+        currentUser.emailNotifyRequests = checked;
         localStorage.setItem('dops_user', JSON.stringify(currentUser));
-      }).catch(err => console.error('emailNotify:', err));
+      }).catch(err => console.error('emailNotifyRequests:', err));
     }
 
-    // ── Förfrågningsöversikt ─────────────────────────────────────────────
+    // ── Schemalagda utskick ───────────────────────────────────────────────
+    let _currentScheduleId = null;
+
+    async function loadSchedules() {
+      const el = document.getElementById('schedule-list');
+      if (!el) return;
+      const klinikId = activeKlinikId || currentUser.klinikId || '*';
+      try {
+        const schedules = await api('getScheduledEmails', { klinikId });
+        if (!schedules.length) { el.innerHTML = '<p style="color:#888;font-size:14px;">Inga schemalagda utskick.</p>'; return; }
+        el.innerHTML = schedules.map(s => `
+          <div class="assessment-card" style="margin-top:10px;max-width:520px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div style="font-weight:bold;">${esc(s.namn)}</div>
+              <span style="font-size:12px;color:${s.aktiv?'#4a9e62':'#9e8e82'};">${s.aktiv?'Aktiv':'Inaktiv'}</span>
+            </div>
+            <div style="font-size:13px;color:#6b5c52;margin-top:4px;">${esc(s.dag)} kl ${esc(s.tid)} · ${s.mottagare.length} mottagare</div>
+            <div style="margin-top:8px;display:flex;gap:8px;">
+              <button class="btn-secondary btn-small" onclick="editSchedule(${JSON.stringify(s).replace(/"/g,'&quot;')})">Redigera</button>
+              <button class="btn-secondary btn-small" onclick="deleteScheduleById('${s.id}')">Ta bort</button>
+            </div>
+          </div>`).join('');
+      } catch(err) { if (el) el.innerHTML = '<p class="status-err">' + err.message + '</p>'; }
+    }
+
+    function showScheduleForm(existing) {
+      _currentScheduleId = existing?.id || null;
+      document.getElementById('sch-namn').value = existing?.namn || '';
+      document.getElementById('sch-dag').value  = existing?.dag  || 'Måndag';
+      document.getElementById('sch-tid').value  = existing?.tid  || '07:00';
+      document.getElementById('sch-typ').value  = existing?.mottagarTyp || 'Registrerare';
+      show('schedule-form', true);
+      populateScheduleRecipients(existing?.mottagare || []);
+    }
+
+    function editSchedule(s) { showScheduleForm(s); }
+
+    function populateScheduleRecipients(checked = []) {
+      const typ = document.getElementById('sch-typ')?.value || '';
+      const klinikId = activeKlinikId || currentUser.klinikId;
+      const container = document.getElementById('sch-recipients');
+      container.innerHTML = '';
+      const allUsers = allAdminUsers || [];
+      const filtered = typ === 'Alla' ? allUsers : allUsers.filter(u =>
+        u.userRole === typ || (typ === 'Registrerare' && u.userRole === 'Blandbild')
+      );
+      filtered.filter(u => !klinikId || klinikId === '*' || u.klinikId === klinikId)
+        .forEach(u => {
+          const lbl = document.createElement('label');
+          lbl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;font-size:14px;cursor:pointer;';
+          const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = u.email;
+          if (checked.includes(u.email)) cb.checked = true;
+          lbl.appendChild(cb);
+          lbl.appendChild(document.createTextNode(u.firstName + ' ' + u.lastName + ' (' + u.jobRole + ')'));
+          container.appendChild(lbl);
+        });
+    }
+
+    async function saveSchedule() {
+      const mottagare = [...document.querySelectorAll('#sch-recipients input:checked')].map(cb => cb.value);
+      const schedule = {
+        id: _currentScheduleId || undefined,
+        namn:        document.getElementById('sch-namn').value.trim(),
+        klinikId:    activeKlinikId || currentUser.klinikId || '',
+        mottagarTyp: document.getElementById('sch-typ').value,
+        dag:         document.getElementById('sch-dag').value,
+        tid:         document.getElementById('sch-tid').value,
+        mottagare, aktiv: true
+      };
+      if (!schedule.namn) { setStatus('sch-status', 'Ange ett namn.', true); return; }
+      try {
+        await api('saveScheduledEmail', { schedule });
+        setStatus('sch-status', '✓ Sparat!', false);
+        show('schedule-form', false);
+        loadSchedules();
+      } catch(err) { setStatus('sch-status', err.message, true); }
+    }
+
+    async function deleteScheduleById(id) {
+      if (!confirm('Ta bort detta schema?')) return;
+      await api('deleteScheduledEmail', { id });
+      loadSchedules();
+    }
     async function loadRequestStats() {
       const el = document.getElementById('reqstat-content');
       el.innerHTML = '<p style="color:#888;">Hämtar...</p>';
@@ -3285,7 +3473,53 @@
       });
     }
 
-    // ── Bakgrundsladdning efter inloggning ────────────────────────────────
+    // ── Startsida-navigation ──────────────────────────────────────────────
+    function getDefaultPanel() {
+      const role = currentUser?.userRole || '';
+      const priv = activePrivilege;
+      // Sparat val för denna användare
+      const saved = localStorage.getItem('dops_startpage_' + (currentUser?.email || ''));
+      if (saved) return saved;
+      if (priv === 'Administratör') return 'admin';
+      if (priv === 'Studierektor')  return 'clinic-overview';
+      if (role === 'Administratör') return 'admin';
+      if (role === 'Mottagare')     return 'my-assessments';
+      if (role === 'Blandbild')     return 'my-assessments';
+      return 'assessment'; // Registrerare default
+    }
+    function goToStartPage() { showPanel(getDefaultPanel()); }
+
+    // ── Navigera till Mina bedömningar med formulärfilter ────────────────
+    function navigateToAssessments(formType) {
+      currentAssessmentRole = 'received';
+      showPanel('my-assessments');
+      setTimeout(() => {
+        const boxes = document.querySelectorAll('#filter-formtypes input[type=checkbox]');
+        boxes.forEach(cb => { cb.checked = cb.value === formType; });
+        applyFilters();
+      }, 150);
+    }
+
+    function getStartPageOptions() {
+      const role = currentUser?.userRole || '';
+      const priv = activePrivilege;
+      const base = [
+        { value: '', label: '-- Standard (baserat på roll) --' },
+        { value: 'overview', label: 'Min översikt' },
+        { value: 'my-assessments', label: 'Mina bedömningar' },
+        { value: 'statistics', label: 'Klinikens statistik' },
+        { value: 'about', label: 'Om MoraDOPS' },
+      ];
+      if (role !== 'Mottagare') base.splice(1, 0, { value: 'assessment', label: 'Registrera bedömning' });
+      if (priv === 'Studierektor' || priv === 'Administratör' || role === 'Administratör') {
+        base.push({ value: 'clinic-overview', label: 'Kliniköversikt' });
+        base.push({ value: 'request-stats',   label: 'Förfrågningsöversikt' });
+      }
+      if (priv === 'Administratör' || role === 'Administratör') {
+        base.push({ value: 'admin', label: 'Administration' });
+      }
+      return base;
+    }
     async function backgroundLoad() {
       if (!currentUser) return;
       const email    = currentUser.email;
@@ -3506,7 +3740,7 @@
         loadStatistics();
       }
       if (panel === 'clinic-overview')  { loadClinicOverview(); }
-      if (panel === 'admin')            { loadAdminPanel(); }
+      if (panel === 'admin')            { loadAdminPanel(); loadSchedules(); }
       if (panel === 'documents')        { loadDocuments(); }
       if (panel === 'overview')          { loadMyOverview(); }
       if (panel === 'inbox')            { loadInbox(); }
