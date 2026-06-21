@@ -1025,15 +1025,13 @@
 
     // ── Bakgrundscache ────────────────────────────────────────────────────
     const _bgCache = {};
-    const BG_TTL   = 20 * 60 * 1000; // 20 min – matchar keep-alive-intervallet
+    const BG_TTL   = 20 * 60 * 1000;
     const AD_TTL   = 10 * 60 * 1000;
 
-    function bgGet(key) {
-      const e = _bgCache[key];
-      return (e && Date.now() - e.ts < BG_TTL) ? e.data : null;
-    }
-    function bgSet(key, data) { _bgCache[key] = { data, ts: Date.now() }; }
-    function bgInvalidate(key) { delete _bgCache[key]; }
+    function _bk(key) { return (currentUser?.email || '__anon__') + ':' + key; }
+    function bgGet(key) { const e = _bgCache[_bk(key)]; return (e && Date.now()-e.ts < BG_TTL) ? e.data : null; }
+    function bgSet(key, data) { _bgCache[_bk(key)] = { data, ts: Date.now() }; }
+    function bgInvalidate(key) { delete _bgCache[_bk(key)]; }
 
     // ── Stale-while-revalidate ────────────────────────────────────────────
     async function swr(cacheKey, fetchFn, renderFn, statusEl, diffFn) {
@@ -1145,8 +1143,7 @@
     };
 
     function bootApp() {
-      // Rensa användar-specifik cache vid (ny) inloggning
-      Object.keys(_bgCache).forEach(k => delete _bgCache[k]);
+      // Email-nycklad cache – rensa inte andras data, bara säkerställ att vi använder rätt nycklar
 
       activePrivilege = null;
       document.getElementById('login-panel').classList.add('hidden');
@@ -1741,6 +1738,7 @@
           confirmTimeEl.classList.add('hidden');
         }
 
+        unlockUI(); // frigör knappar innan vi byter panel
         showPanel('confirmation');
 
                 setTimeout(() => { status.textContent = ''; }, 4000);
@@ -1812,20 +1810,24 @@
       const types = [...new Set(assessments.map(a => a.formType))].sort();
       availableFormTypes = types;
       const counts = {};
-      assessments.forEach(a => { counts[a.formType] = (counts[a.formType] || 0) + 1; });
+      assessments.forEach(a => { counts[a.formType] = (counts[a.formType]||0)+1; });
       const container = document.getElementById('filter-formtypes');
+      if (!container) return;
       container.innerHTML = '';
       types.forEach(t => {
-        const lbl = document.createElement('label');
-        lbl.className = 'filter-chip';
-        const cb = document.createElement('input');
-        cb.type = 'checkbox'; cb.value = t;
+        const lbl = document.createElement('label'); lbl.className = 'filter-chip';
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = t;
         lbl.appendChild(cb);
         lbl.appendChild(document.createTextNode(`${t} (${counts[t]})`));
         container.appendChild(lbl);
       });
+      // Tillämpa pending filter från navigateToAssessments
+      if (_pendingFormFilter) {
+        const pf = _pendingFormFilter; _pendingFormFilter = null;
+        container.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = cb.value === pf; });
+        applyFilters(); // kör om med filtret satt
+      }
     }
-
     function renderAssessments(assessments, role) {
       // Förinställ datumfilter vid första laddning
       const fromEl = document.getElementById('filter-date-from');
@@ -2711,8 +2713,10 @@
 
     function setInboxTab(tab) {
       currentInboxTab = tab;
-      document.getElementById('inbox-tab-inbox').className  = tab === 'inbox'  ? 'btn-primary' : 'btn-secondary';
-      document.getElementById('inbox-tab-outbox').className = tab === 'outbox' ? 'btn-primary' : 'btn-secondary';
+      const ib = document.getElementById('inbox-tab-inbox');
+      const ob = document.getElementById('inbox-tab-outbox');
+      if (ib) { ib.className = tab==='inbox'  ? 'btn-primary' : 'btn-secondary'; ib.disabled = false; }
+      if (ob) { ob.className = tab==='outbox' ? 'btn-primary' : 'btn-secondary'; ob.disabled = false; }
       renderInbox();
     }
 
@@ -3090,21 +3094,33 @@
 
       el.innerHTML = html;
 
-      // Rita trendgraf
+      // Rita staplad area-graf per formulärtyp (som i Klinikens statistik)
       if (months.length > 0) {
         const ctx = document.getElementById('overview-chart')?.getContext('2d');
         if (ctx) {
-          const datasets = [];
-          if (showReceived) datasets.push({ label: 'Mottagna', data: months.map(m => m.received), borderColor: '#3d5c4a', backgroundColor: '#3d5c4a33', tension: 0.3, fill: true });
-          if (showSent)     datasets.push({ label: 'Registrerade', data: months.map(m => m.sent), borderColor: '#9e7c68', backgroundColor: '#9e7c6833', tension: 0.3, fill: true });
-          window._overviewChartData = { months, showSent, showReceived };
+          const ftByMonth = data.byMonthFormType || {};
+          const allMonthKeys = Object.keys(ftByMonth).sort();
+          const allFtRaw = {};
+          allMonthKeys.forEach(mk => {
+            Object.keys(ftByMonth[mk]).forEach(k => { if (k !== 'label') allFtRaw[k] = (allFtRaw[k]||0) + (ftByMonth[mk][k]||0); });
+          });
+          const sortedFt = Object.keys(allFtRaw).sort((a,b) => allFtRaw[a]-allFtRaw[b]);
+          const datasets = sortedFt.map((ft, i) => ({
+            label: ft,
+            data: allMonthKeys.map(mk => ftByMonth[mk]?.[ft] || 0),
+            borderColor: CHART_COLORS[i % CHART_COLORS.length],
+            backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '55',
+            tension: 0.3, fill: true, pointRadius: 2,
+          }));
+          window._overviewChartData = { months, allMonthKeys, ftByMonth, allFtRaw, showSent, showReceived };
+          if (window._overviewChart) window._overviewChart.destroy();
           window._overviewChart = new Chart(ctx, {
             type: 'line',
-            data: { labels: months.map(m => m.label), datasets },
+            data: { labels: allMonthKeys.map(mk => ftByMonth[mk]?.label || mk), datasets },
             options: {
               responsive: true, maintainAspectRatio: true,
               plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
-              scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#d8cfc5' } }, x: { grid: { color: '#d8cfc5' } } }
+              scales: { y: { beginAtZero: true, stacked: true, ticks: { stepSize: 1 }, grid: { color: '#d8cfc5' } }, x: { grid: { color: '#d8cfc5' } } }
             }
           });
         }
@@ -3203,13 +3219,20 @@
       } catch(err) { if (el) el.innerHTML = '<p class="status-err">' + err.message + '</p>'; }
     }
 
-    function showScheduleForm(existing) {
+    async function showScheduleForm(existing) {
       _currentScheduleId = existing?.id || null;
       document.getElementById('sch-namn').value = existing?.namn || '';
       document.getElementById('sch-dag').value  = existing?.dag  || 'Måndag';
       document.getElementById('sch-tid').value  = existing?.tid  || '07:00';
       document.getElementById('sch-typ').value  = existing?.mottagarTyp || 'Registrerare';
       show('schedule-form', true);
+      // Ladda användare om inte tillgängliga
+      if (!allAdminUsers || !allAdminUsers.length) {
+        try {
+          const res = await api('getAllUsers', { klinikId: activeKlinikId || currentUser.klinikId || '*' });
+          allAdminUsers = res || [];
+        } catch(e) { allAdminUsers = []; }
+      }
       populateScheduleRecipients(existing?.mottagare || []);
     }
 
@@ -3445,30 +3468,32 @@
     }
 
     function filterTrend(days, btn) {
-      // Uppdatera aktiv knapp-styling
       document.querySelectorAll('#trend-filter-btns button').forEach(b => {
         b.style.background = b === btn ? '#3d5c4a' : '#d8cfc5';
         b.style.color = b === btn ? '#f0ede8' : '#2a1f18';
       });
       const d = window._overviewChartData;
-      if (!d) return;
-      const all = d.months || [];
-      if (!all.length) return;
-      // days=0 = MAX, annars slice på antal månader
-      const filtered = days === 0 ? all : all.slice(-Math.max(1, Math.ceil(days / 30)));
+      if (!d || !d.allMonthKeys) return;
+      const nMonths = days === 0 ? d.allMonthKeys.length : Math.max(1, Math.ceil(days / 30));
+      const filteredKeys = d.allMonthKeys.slice(-nMonths);
       const ctx = document.getElementById('overview-chart')?.getContext('2d');
       if (!ctx) return;
       window._overviewChart?.destroy();
-      const datasets = [];
-      if (d.showReceived) datasets.push({ label: 'Mottagna',     data: filtered.map(m => m.received), borderColor: '#3d5c4a', backgroundColor: '#3d5c4a33', tension: 0.3, fill: true });
-      if (d.showSent)     datasets.push({ label: 'Registrerade', data: filtered.map(m => m.sent),     borderColor: '#9e7c68', backgroundColor: '#9e7c6833', tension: 0.3, fill: true });
+      const sortedFt = Object.keys(d.allFtRaw||{}).sort((a,b) => d.allFtRaw[a]-d.allFtRaw[b]);
+      const datasets = sortedFt.map((ft, i) => ({
+        label: ft,
+        data: filteredKeys.map(mk => d.ftByMonth?.[mk]?.[ft] || 0),
+        borderColor: CHART_COLORS[i % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '55',
+        tension: 0.3, fill: true, pointRadius: 2,
+      }));
       window._overviewChart = new Chart(ctx, {
         type: 'line',
-        data: { labels: filtered.map(m => m.label), datasets },
+        data: { labels: filteredKeys.map(mk => d.ftByMonth?.[mk]?.label || mk), datasets },
         options: {
           responsive: true, maintainAspectRatio: true,
           plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
-          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#d8cfc5' } }, x: { grid: { color: '#d8cfc5' } } }
+          scales: { y: { beginAtZero: true, stacked: true, ticks: { stepSize: 1 }, grid: { color: '#d8cfc5' } }, x: { grid: { color: '#d8cfc5' } } }
         }
       });
     }
@@ -3477,27 +3502,22 @@
     function getDefaultPanel() {
       const role = currentUser?.userRole || '';
       const priv = activePrivilege;
-      // Sparat val för denna användare
-      const saved = localStorage.getItem('dops_startpage_' + (currentUser?.email || ''));
+      // Sparat val: Sheets (via login) har prioritet, localStorage är fallback
+      const saved = currentUser?.startPage || localStorage.getItem('dops_startpage_' + (currentUser?.email || ''));
       if (saved) return saved;
-      if (priv === 'Administratör') return 'admin';
+      if (priv === 'Administratör' || role === 'Administratör') return 'admin';
       if (priv === 'Studierektor')  return 'clinic-overview';
-      if (role === 'Administratör') return 'admin';
-      if (role === 'Mottagare')     return 'my-assessments';
-      if (role === 'Blandbild')     return 'my-assessments';
-      return 'assessment'; // Registrerare default
+      if (role === 'Mottagare' || role === 'Blandbild') return 'my-assessments';
+      return 'assessment';
     }
     function goToStartPage() { showPanel(getDefaultPanel()); }
 
-    // ── Navigera till Mina bedömningar med formulärfilter ────────────────
+    let _pendingFormFilter = null; // sätts av navigateToAssessments, läses av updateFormTypeFilters
+
     function navigateToAssessments(formType) {
+      _pendingFormFilter = formType;
       currentAssessmentRole = 'received';
       showPanel('my-assessments');
-      setTimeout(() => {
-        const boxes = document.querySelectorAll('#filter-formtypes input[type=checkbox]');
-        boxes.forEach(cb => { cb.checked = cb.value === formType; });
-        applyFilters();
-      }, 150);
     }
 
     function getStartPageOptions() {
@@ -3505,10 +3525,10 @@
       const priv = activePrivilege;
       const base = [
         { value: '', label: '-- Standard (baserat på roll) --' },
+        { value: 'inbox',  label: 'Förfrågningar' },
         { value: 'overview', label: 'Min översikt' },
         { value: 'my-assessments', label: 'Mina bedömningar' },
         { value: 'statistics', label: 'Klinikens statistik' },
-        { value: 'about', label: 'Om MoraDOPS' },
       ];
       if (role !== 'Mottagare') base.splice(1, 0, { value: 'assessment', label: 'Registrera bedömning' });
       if (priv === 'Studierektor' || priv === 'Administratör' || role === 'Administratör') {
