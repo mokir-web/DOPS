@@ -3600,7 +3600,11 @@
       if (role === 'Mottagare' || role === 'Blandbild') return 'my-assessments';
       return 'assessment';
     }
-    function goToStartPage() { showPanel(getDefaultPanel()); }
+    function goToStartPage() {
+      const p = getDefaultPanel();
+      if (p === 'blank') return; // visa ingenting, stanna kvar
+      showPanel(p);
+    }
 
     let _pendingFormFilter = null; // sätts av navigateToAssessments, läses av updateFormTypeFilters
 
@@ -3615,6 +3619,7 @@
       const priv = activePrivilege;
       const base = [
         { value: '', label: '-- Standard (baserat på roll) --' },
+        { value: 'blank', label: 'Tom sida' },
         { value: 'inbox',  label: 'Förfrågningar' },
         { value: 'overview', label: 'Min översikt' },
         { value: 'my-assessments', label: 'Mina bedömningar' },
@@ -3800,10 +3805,10 @@
       // Ta bort loading-overlay vid första showPanel
       const loadingEl = document.getElementById('app-loading');
       if (loadingEl) loadingEl.remove();
-      ['assessment','my-assessments','overview','confirmation','clinic-overview','admin','statistics','documents','about','inbox','request-stats','profile'].forEach(p =>
+      ['assessment','my-assessments','overview','confirmation','clinic-overview','admin','reminders','statistics','documents','about','inbox','request-stats','profile'].forEach(p =>
         show(`panel-${p}`, p === panel)
       );
-      ['assessment','my-assessments','overview','confirmation','clinic-overview','admin','statistics','documents','about','inbox','request-stats','profile'].forEach(p => {
+      ['assessment','my-assessments','overview','confirmation','clinic-overview','admin','reminders','statistics','documents','about','inbox','request-stats','profile'].forEach(p => {
         const btn = document.getElementById(`nav-btn-${p}`);
         if (btn) btn.classList.toggle('active', p === panel);
       });
