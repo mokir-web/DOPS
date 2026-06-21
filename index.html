@@ -1797,6 +1797,8 @@
       const list = document.getElementById('co-list');
       list.innerHTML = '<p style="color:#888;">Hämtar bedömningar...</p>';
       show('co-select-wrap', false);
+      try {
+        const assessments = await api('getClinicAssessments', { klinikId, filters });
         clinicAssessments = assessments;
         renderClinicAssessments(assessments);
         updateCoFormTypeFilters(assessments);
